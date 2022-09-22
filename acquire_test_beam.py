@@ -6,6 +6,8 @@ import time
 from TheSetup import connect_me_with_the_setup
 from huge_dataframe.SQLiteDataFrame import SQLiteDataFrameDumper # https://github.com/SengerM/huge_dataframe
 import datetime
+import threading
+from parse_waveforms import parse_waveforms
 
 def trigger_and_measure_dut_stuff(the_setup, name_to_access_to_the_setup:str, slots_numbers:list)->pandas.DataFrame:
 	elapsed_seconds = 9999
@@ -82,6 +84,46 @@ def acquire_test_beam_data(bureaucrat:RunBureaucrat, the_setup, name_to_access_t
 			if not silent:
 				print(f'Finished acquiring n_trigger {n_trigger}.')
 
+def acquire_and_parse(bureaucrat:RunBureaucrat, the_setup, name_to_access_to_the_setup:str, n_triggers:int, slots_numbers:list, delete_waveforms_file:bool, silent:bool=True):
+	"""Perform a `TCT_1D_scan` and parse in parallel."""
+	Ernestino = bureaucrat
+	still_aquiring_data = True
+	
+	def parsing_thread_function():
+		args = dict(
+			bureaucrat = Ernestino, 
+			name_of_task_that_produced_the_waveforms_to_parse = 'acquire_test_beam_data',
+			silent = silent, 
+			continue_from_where_we_left_last_time = True,
+		)
+		while still_aquiring_data:
+			try:
+				parse_waveforms(**args)
+			except:
+				pass
+			time.sleep(1)
+		parse_waveforms(**args) # This last call is in case there is a bunch of waveforms left.
+	
+	parsing_thread = threading.Thread(target=parsing_thread_function)
+	
+	try:
+		parsing_thread.start()
+		acquire_test_beam_data(
+			bureaucrat = Ernestino,
+			the_setup = the_setup,
+			name_to_access_to_the_setup = name_to_access_to_the_setup,
+			slots_numbers = slots_numbers,
+			n_triggers = n_triggers,
+			silent = silent,
+		)
+	finally:
+		still_aquiring_data = False
+		while parsing_thread.is_alive():
+			time.sleep(1)
+		
+		if delete_waveforms_file == True:
+			(Ernestino.path_to_directory_of_task('acquire_test_beam_data')/'waveforms.sqlite').unlink()
+	
 if __name__=='__main__':
 	import os
 	from configuration_files.current_run import Alberto
@@ -97,9 +139,17 @@ if __name__=='__main__':
 		acquire_test_beam_data(
 			bureaucrat = Mariano,
 			name_to_access_to_the_setup = NAME_TO_ACCESS_TO_THE_SETUP,
-			n_triggers = 999,
+			n_triggers = 5555,
 			the_setup = the_setup,
 			slots_numbers = SLOTS,
 			silent = False,
 		)
-
+		# ~ acquire_and_parse(
+			# ~ bureaucrat = Mariano,
+			# ~ the_setup = the_setup,
+			# ~ name_to_access_to_the_setup = NAME_TO_ACCESS_TO_THE_SETUP,
+			# ~ n_triggers = 555,
+			# ~ slots_numbers = [1,2,3,4],
+			# ~ delete_waveforms_file = False,
+			# ~ silent = False,
+		# ~ )
