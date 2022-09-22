@@ -8,6 +8,8 @@ from huge_dataframe.SQLiteDataFrame import SQLiteDataFrameDumper # https://githu
 import datetime
 import threading
 from parse_waveforms import parse_waveforms
+from progressreporting.TelegramProgressReporter import TelegramReporter # https://github.com/SengerM/progressreporting
+from contextlib import nullcontext
 
 def trigger_and_measure_dut_stuff(the_setup, name_to_access_to_the_setup:str, slots_numbers:list)->pandas.DataFrame:
 	elapsed_seconds = 9999
@@ -30,7 +32,8 @@ def trigger_and_measure_dut_stuff(the_setup, name_to_access_to_the_setup:str, sl
 
 INDEX_COLUMNS = ['n_trigger','slot_number']
 
-def acquire_test_beam_data(bureaucrat:RunBureaucrat, the_setup, name_to_access_to_the_setup:str, n_triggers:int, slots_numbers:list, silent:bool=True):
+def acquire_test_beam_data(bureaucrat:RunBureaucrat, the_setup, name_to_access_to_the_setup:str, n_triggers:int, slots_numbers:list, silent:bool=True, reporter:TelegramReporter=None):
+	report_progress = reporter is not None
 	with bureaucrat.handle_task('acquire_test_beam_data') as employee, \
 		the_setup.hold_signal_acquisition(name_to_access_to_the_setup), \
 		SQLiteDataFrameDumper(
@@ -42,7 +45,8 @@ def acquire_test_beam_data(bureaucrat:RunBureaucrat, the_setup, name_to_access_t
 			employee.path_to_directory_of_my_task/'extra_stuff.sqlite',
 			dump_after_n_appends = 1111,
 			dump_after_seconds = 11,
-		) as extra_stuff_dumper \
+		) as extra_stuff_dumper, \
+		reporter.report_for_loop(n_triggers, f'{bureaucrat.run_name}') if report_progress else nullcontext() as reporter \
 	:
 		with open(employee.path_to_directory_of_my_task/'setup_description.txt', 'w') as ofile:
 			print(the_setup.get_description(), file=ofile)
@@ -65,7 +69,19 @@ def acquire_test_beam_data(bureaucrat:RunBureaucrat, the_setup, name_to_access_t
 				print(f'Acquiring n_trigger {n_trigger} out of {n_triggers}...')
 			this_spill_data = []
 			for slot_number in slots_numbers:
-				this_slot_data = the_setup.get_waveform(the_setup.get_slots_configuration_df().loc[slot_number,'oscilloscope_channel_number'])
+				while True:
+					try:
+						this_slot_data = the_setup.get_waveform(the_setup.get_slots_configuration_df().loc[slot_number,'oscilloscope_channel_number'])
+					except RuntimeError as e:
+						if 'The number of waveforms does not conincide with the number of segments.' in str(e):
+							print(f'The error happened, trying again...')
+							trigger_and_measure_dut_stuff(
+								the_setup = the_setup,
+								name_to_access_to_the_setup = name_to_access_to_the_setup,
+								slots_numbers = slots_numbers,
+							)
+							continue
+					break
 				this_n_trigger = n_trigger
 				for i in range(len(this_slot_data)):
 					if not silent:
@@ -80,11 +96,14 @@ def acquire_test_beam_data(bureaucrat:RunBureaucrat, the_setup, name_to_access_t
 			this_spill_data = pandas.concat(this_spill_data)
 			this_spill_data.sort_values(INDEX_COLUMNS, inplace=True)
 			waveforms_dumper.append(this_spill_data)
-			n_trigger = this_n_trigger-1
+			increment_n_trigger_by = this_n_trigger-1-n_trigger
+			n_trigger += increment_n_trigger_by
+			if report_progress:
+				reporter.update(increment_n_trigger_by)
 			if not silent:
 				print(f'Finished acquiring n_trigger {n_trigger}.')
 
-def acquire_and_parse(bureaucrat:RunBureaucrat, the_setup, name_to_access_to_the_setup:str, n_triggers:int, slots_numbers:list, delete_waveforms_file:bool, silent:bool=True):
+def acquire_and_parse(bureaucrat:RunBureaucrat, the_setup, name_to_access_to_the_setup:str, n_triggers:int, slots_numbers:list, delete_waveforms_file:bool, reporter:TelegramReporter=None, silent:bool=True):
 	"""Perform a `TCT_1D_scan` and parse in parallel."""
 	Ernestino = bureaucrat
 	still_aquiring_data = True
@@ -93,7 +112,7 @@ def acquire_and_parse(bureaucrat:RunBureaucrat, the_setup, name_to_access_to_the
 		args = dict(
 			bureaucrat = Ernestino, 
 			name_of_task_that_produced_the_waveforms_to_parse = 'acquire_test_beam_data',
-			silent = silent, 
+			silent = True, 
 			continue_from_where_we_left_last_time = True,
 		)
 		while still_aquiring_data:
@@ -114,6 +133,7 @@ def acquire_and_parse(bureaucrat:RunBureaucrat, the_setup, name_to_access_to_the
 			name_to_access_to_the_setup = name_to_access_to_the_setup,
 			slots_numbers = slots_numbers,
 			n_triggers = n_triggers,
+			reporter = reporter,
 			silent = silent,
 		)
 	finally:
@@ -128,6 +148,7 @@ if __name__=='__main__':
 	import os
 	from configuration_files.current_run import Alberto
 	from utils import create_a_timestamp
+	import my_telegram_bots
 	
 	SLOTS = [1,2,3,4]
 	NAME_TO_ACCESS_TO_THE_SETUP = f'acquire test bean PID: {os.getpid()}'
@@ -136,20 +157,24 @@ if __name__=='__main__':
 	
 	with Alberto.handle_task('test_beam_data', drop_old_data=False) as employee:
 		Mariano = employee.create_subrun(create_a_timestamp() + '_' + input('Measurement name? ').replace(' ','_'))
-		acquire_test_beam_data(
-			bureaucrat = Mariano,
-			name_to_access_to_the_setup = NAME_TO_ACCESS_TO_THE_SETUP,
-			n_triggers = 5555,
-			the_setup = the_setup,
-			slots_numbers = SLOTS,
-			silent = False,
-		)
-		# ~ acquire_and_parse(
+		# ~ acquire_test_beam_data(
 			# ~ bureaucrat = Mariano,
-			# ~ the_setup = the_setup,
 			# ~ name_to_access_to_the_setup = NAME_TO_ACCESS_TO_THE_SETUP,
-			# ~ n_triggers = 555,
-			# ~ slots_numbers = [1,2,3,4],
-			# ~ delete_waveforms_file = False,
+			# ~ n_triggers = 5555,
+			# ~ the_setup = the_setup,
+			# ~ slots_numbers = SLOTS,
 			# ~ silent = False,
 		# ~ )
+		acquire_and_parse(
+			bureaucrat = Mariano,
+			the_setup = the_setup,
+			name_to_access_to_the_setup = NAME_TO_ACCESS_TO_THE_SETUP,
+			n_triggers = 9999,
+			slots_numbers = [1,2,3,4],
+			delete_waveforms_file = False,
+			silent = False,
+			reporter = TelegramReporter(
+				telegram_token = my_telegram_bots.robobot.token, 
+				telegram_chat_id = my_telegram_bots.chat_ids['Robobot TCT setup'],
+			),
+		)
