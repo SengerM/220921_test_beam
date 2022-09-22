@@ -36,7 +36,7 @@ def parse_waveforms(bureaucrat:RunBureaucrat, name_of_task_that_produced_the_wav
 	with Quique.handle_task('parse_waveforms', drop_old_data=not continue_from_where_we_left_last_time) as Quiques_employee:
 		try:
 			index_of_waveforms_already_parsed_in_the_past = set(load_whole_dataframe(Quiques_employee.path_to_directory_of_my_task/'parsed_from_waveforms.sqlite').index)
-		except FileNotFoundError:
+		except Exception:
 			index_of_waveforms_already_parsed_in_the_past = set()
 		
 		path_to_waveforms_file = Quiques_employee.path_to_directory_of_task(name_of_task_that_produced_the_waveforms_to_parse)/'waveforms.sqlite'
@@ -51,7 +51,7 @@ def parse_waveforms(bureaucrat:RunBureaucrat, name_of_task_that_produced_the_wav
 			print(f'{len(index_of_waveforms_that_still_need_to_be_parsed)} waveforms still need to be parsed. The others were already parsed beforehand. Will now proceed...')
 		
 		with SQLiteDataFrameDumper(Quiques_employee.path_to_directory_of_my_task/Path('parsed_from_waveforms.sqlite'), dump_after_n_appends = 1111, dump_after_seconds = 60, delete_database_if_already_exists=False) as parsed_data_dumper: 
-			for idx in index_of_waveforms_that_still_need_to_be_parsed:
+			for k,idx in enumerate(index_of_waveforms_that_still_need_to_be_parsed):
 				sqlite_query = f'SELECT * from dataframe_table where ('
 				index_to_select = ''
 				for idx_val, idx_name in zip(idx, list(index_df.index.names)):
@@ -60,7 +60,7 @@ def parse_waveforms(bureaucrat:RunBureaucrat, name_of_task_that_produced_the_wav
 				index_to_select = index_to_select[:-5]
 				sqlite_query += index_to_select + ')'
 				if not silent:
-					print(f'Processing {index_to_select}...')
+					print(f'Processing {index_to_select} ({int(k/len(index_of_waveforms_that_still_need_to_be_parsed)*100)} %)...')
 				waveform_df = pandas.read_sql_query(
 					sqlite_query,
 					sqlite_connection,
