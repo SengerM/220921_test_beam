@@ -44,12 +44,13 @@ def acquire_test_beam_data(bureaucrat:RunBureaucrat, the_setup, name_to_access_t
 	:
 		with open(employee.path_to_directory_of_my_task/'setup_description.txt', 'w') as ofile:
 			print(the_setup.get_description(), file=ofile)
+			the_setup.get_slots_configuration_df().to_csv(employee.path_to_directory_of_my_task/'slots_configuration.csv')
 		n_trigger = -1
 		while n_trigger < n_triggers:
 			n_trigger += 1
 			
 			if not silent:
-				print(f'Waiting for trigger in the oscilloscope...')
+				print(f'Waiting for trigger in the oscilloscope (n_trigger {n_trigger})...')
 			measured_stuff = trigger_and_measure_dut_stuff(
 				the_setup = the_setup,
 				name_to_access_to_the_setup = name_to_access_to_the_setup,
@@ -60,17 +61,26 @@ def acquire_test_beam_data(bureaucrat:RunBureaucrat, the_setup, name_to_access_t
 			
 			if not silent:
 				print(f'Acquiring n_trigger {n_trigger} out of {n_triggers}...')
-			data = []
+			this_spill_data = []
 			for slot_number in slots_numbers:
-				data = the_setup.get_waveform(the_setup.get_slots_configuration_df().loc[slot_number,'oscilloscope_channel_number'])
-				for i in range(len(data)):
+				this_slot_data = the_setup.get_waveform(the_setup.get_slots_configuration_df().loc[slot_number,'oscilloscope_channel_number'])
+				this_n_trigger = n_trigger
+				for i in range(len(this_slot_data)):
 					if not silent:
-						print(f'Processing n_trigger {n_trigger+i}/{n_triggers}, slot_number {slot_number}...')
-					data[i]['n_trigger'] = n_trigger + i
-					data[i]['slot_number'] = slot_number
-					data[i] = pandas.DataFrame(data[i])
-					waveforms_dumper.append(data[i].set_index(INDEX_COLUMNS))
-			n_trigger = data[-1]['n_trigger'].max()
+						print(f'Processing n_trigger {this_n_trigger}/{n_triggers}, slot_number {slot_number}...')
+					this_slot_data[i]['n_trigger'] = this_n_trigger
+					this_slot_data[i]['slot_number'] = slot_number
+					this_slot_data[i] = pandas.DataFrame(this_slot_data[i])
+					this_slot_data[i] = this_slot_data[i].set_index(INDEX_COLUMNS)
+					this_n_trigger += 1
+				this_slot_data = pandas.concat(this_slot_data)
+				this_spill_data.append(this_slot_data)
+			this_spill_data = pandas.concat(this_spill_data)
+			this_spill_data.sort_values(INDEX_COLUMNS, inplace=True)
+			waveforms_dumper.append(this_spill_data)
+			n_trigger = this_n_trigger-1
+			if not silent:
+				print(f'Finished acquiring n_trigger {n_trigger}.')
 
 if __name__=='__main__':
 	import os
