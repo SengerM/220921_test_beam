@@ -4,6 +4,8 @@ import pandas
 from huge_dataframe.SQLiteDataFrame import SQLiteDataFrameDumper, load_whole_dataframe, load_only_index_without_repeated_entries # https://github.com/SengerM/huge_dataframe
 import sqlite3
 from signals.PeakSignal import PeakSignal, draw_in_plotly # https://github.com/SengerM/signals
+import numpy
+import plotly.graph_objects as go
 
 def parse_waveform(signal:PeakSignal)->dict:
 	parsed = {
@@ -14,7 +16,7 @@ def parse_waveform(signal:PeakSignal)->dict:
 		'Time over noise (s)': signal.time_over_noise,
 		'Peak start time (s)': signal.peak_start_time,
 		'Whole signal integral (V s)': signal.integral_from_baseline,
-		'SNR': signal.SNR
+		'SNR': signal.SNR,
 	}
 	for threshold_percentage in [10,20,30,40,50,60,70,80,90]:
 		try:
@@ -29,6 +31,46 @@ def parse_waveform(signal:PeakSignal)->dict:
 			time_at_this_pp = float('NaN')
 		parsed[f't_{pp} (s)'] = time_at_this_pp
 	return parsed
+
+def plot_waveform(signal):
+	fig = draw_in_plotly(signal)
+	fig.update_layout(
+		xaxis_title = "Time (s)",
+		yaxis_title = "Amplitude (V)",
+	)
+	MARKERS = { # https://plotly.com/python/marker-style/#custom-marker-symbols
+		10: 'circle',
+		20: 'square',
+		30: 'diamond',
+		40: 'cross',
+		50: 'x',
+		60: 'star',
+		70: 'hexagram',
+		80: 'star-triangle-up',
+		90: 'star-triangle-down',
+	}
+	for pp in [10,20,30,40,50,60,70,80,90]:
+		try:
+			fig.add_trace(
+				go.Scatter(
+					x = [signal.find_time_at_rising_edge(pp)],
+					y = [signal(signal.find_time_at_rising_edge(pp))],
+					mode = 'markers',
+					name = f'Time at {pp} %',
+					marker=dict(
+						color = 'rgba(0,0,0,.5)',
+						size = 11,
+						symbol = MARKERS[pp]+'-open-dot',
+						line = dict(
+							color = 'rgba(0,0,0,.5)',
+							width = 2,
+						)
+					),
+				)
+			)
+		except Exception as e:
+			pass
+	return fig
 
 def parse_waveforms(bureaucrat:RunBureaucrat, name_of_task_that_produced_the_waveforms_to_parse:str, continue_from_where_we_left_last_time:bool=True, silent:bool=True):
 	Quique = bureaucrat
@@ -65,7 +107,8 @@ def parse_waveforms(bureaucrat:RunBureaucrat, name_of_task_that_produced_the_wav
 					sqlite_query,
 					sqlite_connection,
 				)
-				parsed_from_waveform = parse_waveform(PeakSignal(time=waveform_df['Time (s)'], samples=waveform_df['Amplitude (V)']))
+				signal = PeakSignal(time=waveform_df['Time (s)'], samples=waveform_df['Amplitude (V)'])
+				parsed_from_waveform = parse_waveform(signal)
 				for idx_val, idx_name in zip(idx, list(index_df.index.names)):
 					parsed_from_waveform[idx_name] = idx_val
 				parsed_from_waveform_df = pandas.DataFrame(
@@ -73,6 +116,18 @@ def parse_waveforms(bureaucrat:RunBureaucrat, name_of_task_that_produced_the_wav
 					index = [0],
 				).set_index(list(index_df.index.names), drop=True)
 				parsed_data_dumper.append(parsed_from_waveform_df)
+				
+				if numpy.random.rand() < 20/len(index_df):
+					if signal.SNR > 10 or numpy.random.rand() < .4:
+						if not silent:
+							print(f'Doing plot of this signal...')
+						path_for_plots = Quiques_employee.path_to_directory_of_my_task/'plots_of_some_randomly_selected_waveforms'
+						path_for_plots.mkdir(exist_ok=True)
+						fig = plot_waveform(signal)
+						fig.write_html(
+							path_for_plots/f'{index_to_select.replace("==","_")}.html',
+							include_plotlyjs = 'cdn',
+						)
 
 if __name__=='__main__':
 	import argparse
