@@ -1,0 +1,5 @@
+slot_number,device_name,caen_serial_number,caen_channel_number,oscilloscope_channel_number,Noise (V),Last trigger on noise (V),Self-trigger voltage (V)
+1,HPK-2,13398,2,2,1.64E-03,-1.20E-02,130
+2,TI327,13398,0,1,1.69E-03,-1.22E-02,260
+3,TI113,13398,3,3,1.49E-03,-1.06E-02,262
+4,TI326,13398,1,4,1.66E-03,-1.12E-02,255
