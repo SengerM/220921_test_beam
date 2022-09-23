@@ -11,6 +11,9 @@ from huge_dataframe.SQLiteDataFrame import load_whole_dataframe # https://github
 import shutil
 from clean_test_beam import tag_n_trigger_as_background_according_to_the_result_of_clean_test_beam
 import multiprocessing
+import pickle
+import uncertainties
+import numpy
 
 N_BOOTSTRAP = 33
 STATISTIC_TO_USE_FOR_THE_FINAL_JITTER_CALCULATION = 'sigma_from_gaussian_fit' # For the time resolution I will use the `sigma_from_gaussian_fit` because in practice ends up being the most robust and reliable of all.
@@ -413,11 +416,14 @@ def jitter_calculation_test_beam(bureaucrat:RunBureaucrat, signals_names:set, CF
 			str(Norbertos_employee.path_to_directory_of_my_task/Path(f'histogram bootstrap.html')),
 			include_plotlyjs = 'cdn',
 		)
+		
+		with open(Norbertos_employee.path_to_directory_of_my_task/'signals_names.pickle', 'wb') as ofile:
+			pickle.dump(signals_names, ofile)
 
 def jitter_calculation_test_beam_sweeping_voltage(bureaucrat:RunBureaucrat, signals_names:set, CFD_thresholds='best', force_calculation_on_submeasurements:bool=False, number_of_processes:int=1):
 	Norberto = bureaucrat
 	
-	Norberto.check_these_tasks_were_run_successfully('test_beam_sweeping_bias_voltage')
+	Norberto.check_these_tasks_were_run_successfully(['test_beam_sweeping_bias_voltage'])
 	
 	subruns = Norberto.list_subruns_of_task('test_beam_sweeping_bias_voltage')
 	with multiprocessing.Pool(number_of_processes) as p:
@@ -429,14 +435,22 @@ def jitter_calculation_test_beam_sweeping_voltage(bureaucrat:RunBureaucrat, sign
 	with Norberto.handle_task('jitter_calculation_test_beam_sweeping_voltage') as Norbertos_employee:
 		jitters = []
 		for Raúl in Norberto.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
+			Raúl.check_these_tasks_were_run_successfully('summarize_test_beam_extra_stuff')
 			submeasurement_jitter = pandas.read_csv(
 				Raúl.path_to_directory_of_task('jitter_calculation_test_beam')/'jitter.csv',
 				names = ['variable_name','value'],
 			)
+			summary = pandas.read_pickle(Raúl.path_to_directory_of_task('summarize_test_beam_extra_stuff')/'summary.pickle')
+			summary = summary.droplevel(['slot_number','device_name'])
+			with open(Raúl.path_to_directory_of_task('jitter_calculation_test_beam')/'signals_names.pickle', 'rb') as f:
+				signals_names_for_the_jitter_calculation = pickle.load(f)
+			bias_voltages = [uncertainties.ufloat(summary.loc[signal_name,('Bias voltage (V)','mean')],summary.loc[signal_name,('Bias voltage (V)','std')]) for signal_name in signals_names_for_the_jitter_calculation]
+			bias_voltage = numpy.mean(bias_voltages)
 			submeasurement_jitter.set_index('variable_name', inplace=True)
 			submeasurement_jitter = submeasurement_jitter['value']
 			submeasurement_jitter['measurement_name'] = Raúl.run_name
-			submeasurement_jitter['Bias voltage (V)'] = float(Raúl.run_name.split('_')[-1].replace('V',''))
+			submeasurement_jitter['Bias voltage (V)'] = bias_voltage.nominal_value
+			submeasurement_jitter['Bias voltage (V) error'] = bias_voltage.std_dev
 			jitters.append(submeasurement_jitter)
 		
 		jitter_df = pandas.DataFrame.from_records(jitters)
@@ -448,9 +462,11 @@ def jitter_calculation_test_beam_sweeping_voltage(bureaucrat:RunBureaucrat, sign
 			x = 'Bias voltage (V)',
 			y = 'Jitter (s)',
 			error_y = 'Jitter (s) error',
+			error_x = 'Bias voltage (V) error',
 			markers = True,
 			title = f'Jitter vs bias voltage<br><sup>Run: {Norberto.run_name}</sup>',
 		)
+		fig.update_layout(xaxis = dict(autorange = "reversed"))
 		fig.write_html(
 			str(Norbertos_employee.path_to_directory_of_my_task/'jitter_vs_bias_voltage.html'),
 			include_plotlyjs = 'cdn',

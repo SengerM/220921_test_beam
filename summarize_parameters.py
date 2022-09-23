@@ -12,8 +12,9 @@ def summarize_test_beam_extra_stuff(bureaucrat:RunBureaucrat, force:bool=False):
 	
 	with bureaucrat.handle_task('summarize_test_beam_extra_stuff') as employee:
 		extra_stuff = load_whole_dataframe(employee.path_to_directory_of_task('test_beam')/'extra_stuff.sqlite')
-		extra_stuff.drop(columns=['When','signal_name','device_name'], inplace=True)
-		summary = extra_stuff.groupby('slot_number').agg([numpy.mean,numpy.std])
+		extra_stuff.drop(columns=['When'], inplace=True)
+		extra_stuff.set_index(['device_name','signal_name'], inplace=True, append=True)
+		summary = extra_stuff.groupby(['slot_number','device_name','signal_name']).agg([numpy.mean,numpy.std])
 		summary.to_pickle(employee.path_to_directory_of_my_task/'summary.pickle')
 
 def summarize_test_beam_extra_stuff_recursively(bureaucrat:RunBureaucrat, force:bool=False):
