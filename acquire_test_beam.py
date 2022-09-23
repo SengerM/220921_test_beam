@@ -4,13 +4,15 @@ import pandas
 import datetime
 import time
 from TheSetup import connect_me_with_the_setup
-from huge_dataframe.SQLiteDataFrame import SQLiteDataFrameDumper # https://github.com/SengerM/huge_dataframe
+from huge_dataframe.SQLiteDataFrame import SQLiteDataFrameDumper, load_whole_dataframe # https://github.com/SengerM/huge_dataframe
 import datetime
 import threading
 from parse_waveforms import parse_waveforms
 from progressreporting.TelegramProgressReporter import TelegramReporter # https://github.com/SengerM/progressreporting
 from contextlib import nullcontext, ExitStack
 import my_telegram_bots
+import numpy
+import plotly.express as px
 
 def trigger_and_measure_dut_stuff(the_setup, name_to_access_to_the_setup:str, slots_numbers:list)->pandas.DataFrame:
 	elapsed_seconds = 9999
@@ -103,6 +105,50 @@ def acquire_test_beam_data(bureaucrat:RunBureaucrat, the_setup, name_to_access_t
 				reporter.update(increment_n_trigger_by)
 			if not silent:
 				print(f'Finished acquiring n_trigger {n_trigger}.')
+
+def plot_parsed_data_from_test_beam(bureaucrat:RunBureaucrat):
+	bureaucrat.check_these_tasks_were_run_successfully(['acquire_test_beam_data','parse_waveforms'])
+	
+	with bureaucrat.handle_task('plot_parsed_data_from_test_beam') as employee:
+		parsed_from_waveforms = load_whole_dataframe(bureaucrat.path_to_directory_of_task('parse_waveforms')/'parsed_from_waveforms.sqlite')
+		extra_stuff = load_whole_dataframe(bureaucrat.path_to_directory_of_task('acquire_test_beam_data')/'extra_stuff.sqlite')
+		
+		variables_to_plot = set(parsed_from_waveforms.columns)
+		
+		data = parsed_from_waveforms.join(extra_stuff.reset_index(drop=False).set_index('slot_number')['device_name'], on='slot_number', how='inner')
+		
+		PATH_FOR_DISTRIBUTION_PLOTS = employee.path_to_directory_of_my_task/'distributions'
+		PATH_FOR_DISTRIBUTION_PLOTS.mkdir(exist_ok=True)
+		for variable in variables_to_plot:
+			fig = px.ecdf(
+				data.reset_index(drop=False),
+				x = variable,
+				color = 'device_name',
+			)
+			fig.write_html(
+				PATH_FOR_DISTRIBUTION_PLOTS/f'{variable}.html',
+				include_plotlyjs = 'cdn',
+			)
+		dimensions = set(variables_to_plot) - {f't_{i} (s)' for i in [10,20,30,40,60,70,80,90]} - {f'Time over {i}% (s)' for i in [10,30,40,50,60,70,80,90]} - {'device_name'}
+		fig = px.scatter_matrix(
+			data.reset_index(drop=False),
+			dimensions = sorted(dimensions),
+			color = 'device_name',
+		)
+		fig.update_traces(diagonal_visible=False, showupperhalf=False, marker = {'size': 3})
+		for k in range(len(fig.data)):
+			fig.data[k].update(
+				selected = dict(
+					marker = dict(
+						opacity = 1,
+						color = 'black',
+					)
+				),
+			)
+		fig.write_html(
+			employee.path_to_directory_of_my_task/'scatter_matrix_plot.html',
+			include_plotlyjs = 'cdn',
+		)
 
 def acquire_and_parse(bureaucrat:RunBureaucrat, the_setup, name_to_access_to_the_setup:str, n_triggers:int, slots_numbers:list, delete_waveforms_file:bool, reporter:TelegramReporter=None, silent:bool=True):
 	"""Perform a `TCT_1D_scan` and parse in parallel."""
@@ -197,7 +243,7 @@ if __name__=='__main__':
 	
 	the_setup = connect_me_with_the_setup()
 	
-	VOLTAGES = [222,200,180]
+	VOLTAGES = numpy.linspace(222,150,6)
 	
 	with Alberto.handle_task('test_beam_data', drop_old_data=False) as employee:
 		Mariano = employee.create_subrun(create_a_timestamp() + '_' + input('Measurement name? ').replace(' ','_'))
@@ -205,7 +251,7 @@ if __name__=='__main__':
 			bureaucrat = Mariano,
 			the_setup = the_setup,
 			name_to_access_to_the_setup = NAME_TO_ACCESS_TO_THE_SETUP,
-			n_triggers_per_voltage = 99,
+			n_triggers_per_voltage = 999,
 			slots_numbers = [1,2,3,4],
 			bias_voltages = {
 				1: [220]*len(VOLTAGES),
