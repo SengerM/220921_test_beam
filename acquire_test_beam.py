@@ -123,9 +123,10 @@ def plot_parsed_data_from_test_beam(bureaucrat:RunBureaucrat):
 				data.reset_index(drop=False),
 				x = variable,
 				color = 'signal_name',
+				title = f'{variable} distribution<br><sup>Run: {bureaucrat.run_name}',
 			)
 			fig.write_html(
-				PATH_FOR_DISTRIBUTION_PLOTS/f'{variable}.html',
+				PATH_FOR_DISTRIBUTION_PLOTS/f'{variable} ecdf.html',
 				include_plotlyjs = 'cdn',
 			)
 		dimensions = set(variables_to_plot) - {f't_{i} (s)' for i in [10,20,30,40,60,70,80,90]} - {f'Time over {i}% (s)' for i in [10,30,40,50,60,70,80,90]} - {'device_name'} - {'signal_name'}
@@ -133,6 +134,7 @@ def plot_parsed_data_from_test_beam(bureaucrat:RunBureaucrat):
 			data.reset_index(drop=False),
 			dimensions = sorted(dimensions),
 			color = 'signal_name',
+			title = f'Scatter matrix plot<br><sup>Run: {bureaucrat.run_name}',
 		)
 		fig.update_traces(diagonal_visible=False, showupperhalf=False, marker = {'size': 3})
 		for k in range(len(fig.data)):
