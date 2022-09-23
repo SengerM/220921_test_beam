@@ -17,7 +17,17 @@ import plotly.express as px
 def trigger_and_measure_dut_stuff(the_setup, name_to_access_to_the_setup:str, slots_numbers:list)->pandas.DataFrame:
 	elapsed_seconds = 9999
 	while elapsed_seconds > 5: # Because of multiple threads locking the different elements of the_setup, it can happen that this gets blocked for a long time. Thus, the measured data will no longer belong to a single point in time as we expect...:
-		the_setup.wait_for_trigger(who=name_to_access_to_the_setup)
+		while True:
+			the_setup.wait_for_trigger(who=name_to_access_to_the_setup)
+			try:
+				# This is a check to be sure it will work.
+				this_slot_data = the_setup.get_waveform(the_setup.get_slots_configuration_df().loc[slots_numbers[0],'oscilloscope_channel_number'])
+			except RuntimeError as e:
+				if 'The number of waveforms does not conincide with the number of segments.' in str(e):
+					continue
+				else:
+					raise e
+			break
 		trigger_time = time.time()
 		stuff = []
 		for slot_number in slots_numbers:
@@ -26,6 +36,7 @@ def trigger_and_measure_dut_stuff(the_setup, name_to_access_to_the_setup:str, sl
 				'Bias current (A)': the_setup.measure_bias_current(slot_number),
 				'device_name': the_setup.get_name_of_device_in_slot_number(slot_number),
 				'slot_number': slot_number,
+				'signal_name': the_setup.get_slots_configuration_df().loc[slot_number,'signal_name'],
 				'When': datetime.datetime.now()
 			}
 			measured_stuff = pandas.DataFrame(measured_stuff, index=[0])
@@ -72,19 +83,7 @@ def acquire_test_beam_data(bureaucrat:RunBureaucrat, the_setup, name_to_access_t
 				print(f'Acquiring n_trigger {n_trigger} out of {n_triggers}...')
 			this_spill_data = []
 			for slot_number in slots_numbers:
-				while True:
-					try:
-						this_slot_data = the_setup.get_waveform(the_setup.get_slots_configuration_df().loc[slot_number,'oscilloscope_channel_number'])
-					except RuntimeError as e:
-						if 'The number of waveforms does not conincide with the number of segments.' in str(e):
-							print(f'The error happened, trying again...')
-							trigger_and_measure_dut_stuff(
-								the_setup = the_setup,
-								name_to_access_to_the_setup = name_to_access_to_the_setup,
-								slots_numbers = slots_numbers,
-							)
-							continue
-					break
+				this_slot_data = the_setup.get_waveform(the_setup.get_slots_configuration_df().loc[slot_number,'oscilloscope_channel_number'])
 				this_n_trigger = n_trigger
 				for i in range(len(this_slot_data)):
 					if not silent:
@@ -115,7 +114,7 @@ def plot_parsed_data_from_test_beam(bureaucrat:RunBureaucrat):
 		
 		variables_to_plot = set(parsed_from_waveforms.columns)
 		
-		data = parsed_from_waveforms.join(extra_stuff.reset_index(drop=False).set_index('slot_number')['device_name'], on='slot_number', how='inner')
+		data = parsed_from_waveforms.join(extra_stuff.reset_index(drop=False).set_index('slot_number')[['device_name','signal_name']], on='slot_number', how='inner')
 		
 		PATH_FOR_DISTRIBUTION_PLOTS = employee.path_to_directory_of_my_task/'distributions'
 		PATH_FOR_DISTRIBUTION_PLOTS.mkdir(exist_ok=True)
@@ -123,17 +122,17 @@ def plot_parsed_data_from_test_beam(bureaucrat:RunBureaucrat):
 			fig = px.ecdf(
 				data.reset_index(drop=False),
 				x = variable,
-				color = 'device_name',
+				color = 'signal_name',
 			)
 			fig.write_html(
 				PATH_FOR_DISTRIBUTION_PLOTS/f'{variable}.html',
 				include_plotlyjs = 'cdn',
 			)
-		dimensions = set(variables_to_plot) - {f't_{i} (s)' for i in [10,20,30,40,60,70,80,90]} - {f'Time over {i}% (s)' for i in [10,30,40,50,60,70,80,90]} - {'device_name'}
+		dimensions = set(variables_to_plot) - {f't_{i} (s)' for i in [10,20,30,40,60,70,80,90]} - {f'Time over {i}% (s)' for i in [10,30,40,50,60,70,80,90]} - {'device_name'} - {'signal_name'}
 		fig = px.scatter_matrix(
 			data.reset_index(drop=False),
 			dimensions = sorted(dimensions),
-			color = 'device_name',
+			color = 'signal_name',
 		)
 		fig.update_traces(diagonal_visible=False, showupperhalf=False, marker = {'size': 3})
 		for k in range(len(fig.data)):
@@ -233,7 +232,6 @@ def acquire_test_beam_data_sweeping_bias_voltage(bureaucrat:RunBureaucrat, the_s
 			if report_progress:
 				reporter.update(1)
 	
-	
 if __name__=='__main__':
 	import os
 	from configuration_files.current_run import Alberto
@@ -243,7 +241,7 @@ if __name__=='__main__':
 	
 	the_setup = connect_me_with_the_setup()
 	
-	VOLTAGES = numpy.linspace(222,150,6)
+	VOLTAGES = numpy.linspace(222,150,3)
 	
 	with Alberto.handle_task('test_beam_data', drop_old_data=False) as employee:
 		Mariano = employee.create_subrun(create_a_timestamp() + '_' + input('Measurement name? ').replace(' ','_'))
