@@ -1,4 +1,4 @@
-from acquire_test_beam import plot_parsed_data_from_test_beam
+from acquire_test_beam import plot_test_beam
 from the_bureaucrat.bureaucrats import RunBureaucrat # https://github.com/SengerM/the_bureaucrat
 from pathlib import Path
 import pandas
@@ -6,18 +6,18 @@ import dominate # https://github.com/Knio/dominate
 
 def plot_everything_from_test_beam_sweeping_bias_voltage(bureaucrat:RunBureaucrat, measured_stuff_vs_when:bool=False, all_distributions:bool=False):
 	Ernesto = bureaucrat
-	Ernesto.check_these_tasks_were_run_successfully('acquire_test_beam_data_sweeping_bias_voltage')
+	Ernesto.check_these_tasks_were_run_successfully('test_beam_sweeping_bias_voltage')
 	
 	with Ernesto.handle_task('plot_everything_from_test_beam_sweeping_bias_voltage') as Ernestos_employee:
-		for b in Ernesto.list_subruns_of_task('acquire_test_beam_data_sweeping_bias_voltage'):
-			plot_parsed_data_from_test_beam(bureaucrat=b)
+		for b in Ernesto.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
+			plot_test_beam(bureaucrat=b)
 		path_to_subplots = []
 		for plot_type in {'Amplitude (V) ecdf','scatter matrix plot'}:
-			for subrun in Ernestos_employee.list_subruns_of_task('acquire_test_beam_data_sweeping_bias_voltage'):
+			for subrun in Ernestos_employee.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
 				path_to_subplots.append(
 					{
 						'plot_type': plot_type,
-						'path_to_plot': Path('..')/(subrun.path_to_directory_of_task('plot_parsed_data_from_test_beam')/f'distributions/{plot_type}.html').relative_to(Ernesto.path_to_run_directory),
+						'path_to_plot': Path('..')/(subrun.path_to_directory_of_task('plot_test_beam')/f'distributions/{plot_type}.html').relative_to(Ernesto.path_to_run_directory),
 						'run_name': subrun.run_name,
 					}
 				)
@@ -41,8 +41,8 @@ def plot_everything_from_test_beam_sweeping_bias_voltage(bureaucrat:RunBureaucra
 
 def script_core(bureaucrat:RunBureaucrat):
 	if bureaucrat.was_task_run_successfully('acquire_test_beam'):
-		plot_parsed_data_from_test_beam(bureaucrat = bureaucrat)
-	elif bureaucrat.was_task_run_successfully('acquire_test_beam_data_sweeping_bias_voltage'):
+		plot_test_beam(bureaucrat=bureaucrat)
+	elif bureaucrat.was_task_run_successfully('test_beam_sweeping_bias_voltage'):
 		plot_everything_from_test_beam_sweeping_bias_voltage(bureaucrat = bureaucrat)
 	else:
 		raise RuntimeError(f'Dont know how to process run {repr(bureaucrat.run_name)} located in {bureaucrat.path_to_run_directory}.')

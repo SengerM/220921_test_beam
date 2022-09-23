@@ -46,9 +46,9 @@ def trigger_and_measure_dut_stuff(the_setup, name_to_access_to_the_setup:str, sl
 
 INDEX_COLUMNS = ['n_trigger','slot_number']
 
-def acquire_test_beam_data(bureaucrat:RunBureaucrat, the_setup, name_to_access_to_the_setup:str, n_triggers:int, slots_numbers:list, silent:bool=True, reporter:TelegramReporter=None):
+def test_beam(bureaucrat:RunBureaucrat, the_setup, name_to_access_to_the_setup:str, n_triggers:int, slots_numbers:list, silent:bool=True, reporter:TelegramReporter=None):
 	report_progress = reporter is not None
-	with bureaucrat.handle_task('acquire_test_beam_data') as employee, \
+	with bureaucrat.handle_task('test_beam') as employee, \
 		the_setup.hold_signal_acquisition(name_to_access_to_the_setup), \
 		SQLiteDataFrameDumper(
 			employee.path_to_directory_of_my_task/'waveforms.sqlite',
@@ -105,12 +105,12 @@ def acquire_test_beam_data(bureaucrat:RunBureaucrat, the_setup, name_to_access_t
 			if not silent:
 				print(f'Finished acquiring n_trigger {n_trigger}.')
 
-def plot_parsed_data_from_test_beam(bureaucrat:RunBureaucrat):
-	bureaucrat.check_these_tasks_were_run_successfully(['acquire_test_beam_data','parse_waveforms'])
+def plot_test_beam(bureaucrat:RunBureaucrat):
+	bureaucrat.check_these_tasks_were_run_successfully(['test_beam','parse_waveforms'])
 	
-	with bureaucrat.handle_task('plot_parsed_data_from_test_beam') as employee:
+	with bureaucrat.handle_task('plot_test_beam') as employee:
 		parsed_from_waveforms = load_whole_dataframe(bureaucrat.path_to_directory_of_task('parse_waveforms')/'parsed_from_waveforms.sqlite')
-		extra_stuff = load_whole_dataframe(bureaucrat.path_to_directory_of_task('acquire_test_beam_data')/'extra_stuff.sqlite')
+		extra_stuff = load_whole_dataframe(bureaucrat.path_to_directory_of_task('test_beam')/'extra_stuff.sqlite')
 		
 		variables_to_plot = set(parsed_from_waveforms.columns)
 		
@@ -159,7 +159,7 @@ def acquire_and_parse(bureaucrat:RunBureaucrat, the_setup, name_to_access_to_the
 	def parsing_thread_function():
 		args = dict(
 			bureaucrat = Ernestino, 
-			name_of_task_that_produced_the_waveforms_to_parse = 'acquire_test_beam_data',
+			name_of_task_that_produced_the_waveforms_to_parse = 'test_beam',
 			silent = True, 
 			continue_from_where_we_left_last_time = True,
 		)
@@ -175,7 +175,7 @@ def acquire_and_parse(bureaucrat:RunBureaucrat, the_setup, name_to_access_to_the
 	
 	try:
 		parsing_thread.start()
-		acquire_test_beam_data(
+		test_beam(
 			bureaucrat = Ernestino,
 			the_setup = the_setup,
 			name_to_access_to_the_setup = name_to_access_to_the_setup,
@@ -192,7 +192,7 @@ def acquire_and_parse(bureaucrat:RunBureaucrat, the_setup, name_to_access_to_the
 		if delete_waveforms_file == True:
 			(Ernestino.path_to_directory_of_task('acquire_test_beam_data')/'waveforms.sqlite').unlink()
 
-def acquire_test_beam_data_sweeping_bias_voltage(bureaucrat:RunBureaucrat, the_setup, name_to_access_to_the_setup:str, n_triggers_per_voltage:int, slots_numbers:list, bias_voltages:dict, delete_waveforms_file:bool, reporter:TelegramReporter=None, silent:bool=True):
+def test_beam_sweeping_bias_voltage(bureaucrat:RunBureaucrat, the_setup, name_to_access_to_the_setup:str, n_triggers_per_voltage:int, slots_numbers:list, bias_voltages:dict, delete_waveforms_file:bool, reporter:TelegramReporter=None, silent:bool=True):
 	if set(slots_numbers) != set(bias_voltages.keys()):
 		raise ValueError(f'`bias_voltages` must be a dictionary whose keys are the same as the `slots_numbers`.')
 	if any([len(bias_voltages[k])!=len(bias_voltages[list(bias_voltages.keys())[0]]) for k in bias_voltages.keys()]):
@@ -202,7 +202,7 @@ def acquire_test_beam_data_sweeping_bias_voltage(bureaucrat:RunBureaucrat, the_s
 	
 	report_progress = reporter is not None
 	with ExitStack() as stack, \
-		bureaucrat.handle_task('acquire_test_beam_data_sweeping_bias_voltage') as employee, \
+		bureaucrat.handle_task('test_beam_sweeping_bias_voltage') as employee, \
 		reporter.report_for_loop(len(bias_voltages[slots_numbers[0]]), f'{bureaucrat.run_name}') if report_progress else nullcontext() as reporter \
 	:
 		for mgr in [the_setup.hold_control_of_bias_for_slot_number(slot_number=sn, who=name_to_access_to_the_setup) for sn in slots_numbers]:
@@ -247,7 +247,7 @@ if __name__=='__main__':
 	
 	with Alberto.handle_task('test_beam_data', drop_old_data=False) as employee:
 		Mariano = employee.create_subrun(create_a_timestamp() + '_' + input('Measurement name? ').replace(' ','_'))
-		acquire_test_beam_data_sweeping_bias_voltage(
+		test_beam_sweeping_bias_voltage(
 			bureaucrat = Mariano,
 			the_setup = the_setup,
 			name_to_access_to_the_setup = NAME_TO_ACCESS_TO_THE_SETUP,

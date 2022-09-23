@@ -71,7 +71,7 @@ def clean_test_beam(bureaucrat:RunBureaucrat, path_to_cuts_file:Path=None)->Path
 	"""
 	John = bureaucrat
 	
-	John.check_these_tasks_were_run_successfully(['acquire_test_beam_data','parse_waveforms'])
+	John.check_these_tasks_were_run_successfully(['test_beam','parse_waveforms'])
 	
 	if path_to_cuts_file is None:
 		path_to_cuts_file = John.path_to_run_directory/Path('cuts.csv')
@@ -84,7 +84,7 @@ def clean_test_beam(bureaucrat:RunBureaucrat, path_to_cuts_file:Path=None)->Path
 		if set(cuts_df.columns) != REQUIRED_COLUMNS:
 			raise ValueError(f'The file with the cuts {path_to_cuts_file} must have the following columns: {REQUIRED_COLUMNS}, but it has columns {set(cuts_df.columns)}.')
 		parsed_from_waveforms = load_whole_dataframe(bureaucrat.path_to_directory_of_task('parse_waveforms')/'parsed_from_waveforms.sqlite')
-		extra_stuff = load_whole_dataframe(bureaucrat.path_to_directory_of_task('acquire_test_beam_data')/'extra_stuff.sqlite')
+		extra_stuff = load_whole_dataframe(bureaucrat.path_to_directory_of_task('test_beam')/'extra_stuff.sqlite')
 		signal_names = extra_stuff.reset_index(drop=False).set_index('slot_number')['signal_name']
 		signal_names = signal_names[~signal_names.index.duplicated(keep='first')]
 		data_df = parsed_from_waveforms.join(signal_names, on='slot_number')
@@ -107,13 +107,12 @@ def clean_test_beam_sweeping_bias_voltage(bureaucrat:RunBureaucrat, path_to_cuts
 	if set(cuts_df.columns) != REQUIRED_COLUMNS:
 		raise ValueError(f'The file with the cuts {path_to_cuts_file} must have the following columns: {REQUIRED_COLUMNS}, but it has columns {set(cuts_df.columns)}.')
 	cuts_df.set_index('run_name',inplace=True)
-	for run_name, path_to_submeasurement in Eriberto.list_subruns_of_task('beta_scan_sweeping_bias_voltage').items():
-		Quique = RunBureaucrat(path_to_submeasurement)
-		this_run_cuts_df = cuts_df.query(f'run_name=={repr(run_name)}')
+	for Quique in Eriberto.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
+		this_run_cuts_df = cuts_df.query(f'run_name=={repr(Quique.run_name)}')
 		if len(this_run_cuts_df) == 0:
-			raise RuntimeError(f'No cuts were found when cleaning beta scan for run {Eriberto.run_name} located in {Eriberto.path_to_run_directory}.')
+			raise RuntimeError(f'No cuts were found when cleaning test beam for run {Eriberto.run_name} located in {Eriberto.path_to_run_directory}.')
 		this_run_cuts_df.to_csv(Quique.path_to_temporary_directory/'cuts.cvs',index=False)
-		clean_beta_scan(Quique, Quique.path_to_temporary_directory/'cuts.cvs')
+		clean_test_beam(Quique, Quique.path_to_temporary_directory/'cuts.cvs')
 
 def clean_test_beam_plots(bureaucrat:RunBureaucrat, scatter_plot:bool=True, langauss_plots:bool=True, distributions:bool=False):
 	COLOR_DISCRETE_MAP = {
@@ -123,11 +122,11 @@ def clean_test_beam_plots(bureaucrat:RunBureaucrat, scatter_plot:bool=True, lang
 	
 	John = bureaucrat
 	
-	John.check_these_tasks_were_run_successfully(['acquire_test_beam_data','parse_waveforms','clean_test_beam'])
+	John.check_these_tasks_were_run_successfully(['test_beam','parse_waveforms','clean_test_beam'])
 	
 	with John.handle_task('clean_test_beam_plots') as Johns_eployee:
 		parsed_from_waveforms = load_whole_dataframe(bureaucrat.path_to_directory_of_task('parse_waveforms')/'parsed_from_waveforms.sqlite')
-		extra_stuff = load_whole_dataframe(bureaucrat.path_to_directory_of_task('acquire_test_beam_data')/'extra_stuff.sqlite')
+		extra_stuff = load_whole_dataframe(bureaucrat.path_to_directory_of_task('test_beam')/'extra_stuff.sqlite')
 		signal_names = extra_stuff.reset_index(drop=False).set_index('slot_number')['signal_name']
 		signal_names = signal_names[~signal_names.index.duplicated(keep='first')]
 		df = parsed_from_waveforms.join(signal_names, on='slot_number')
@@ -219,17 +218,16 @@ def clean_test_beam_plots(bureaucrat:RunBureaucrat, scatter_plot:bool=True, lang
 					include_plotlyjs = 'cdn',
 				)
 
-def plots_of_acquire_test_beam_data_sweeping_bias_voltage(bureaucrat:RunBureaucrat, scatter_plot:bool=True, langauss_plots:bool=True, distributions:bool=False):
+def plots_of_test_beam_sweeping_bias_voltage(bureaucrat:RunBureaucrat, scatter_plot:bool=True, langauss_plots:bool=True, distributions:bool=False):
 	Ernesto = bureaucrat
-	Ernesto.check_these_tasks_were_run_successfully('acquire_test_beam_data_sweeping_bias_voltage')
+	Ernesto.check_these_tasks_were_run_successfully('test_beam_sweeping_bias_voltage')
 	
-	with Ernesto.handle_task('plots_of_clean_beta_scan_sweeping_bias_voltage') as Ernestos_employee:
-		for run_name, path_to_run in Ernesto.list_subruns_of_task('acquire_test_beam_data_sweeping_bias_voltage').items():
-			clean_beta_scan_plots(RunBureaucrat(path_to_run), scatter_plot=scatter_plot, langauss_plots=langauss_plots, distributions=distributions)
+	with Ernesto.handle_task('plots_of_clean_test_beam_sweeping_bias_voltage') as Ernestos_employee:
+		for b in Ernesto.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
+			clean_test_beam_plots(b, scatter_plot=scatter_plot, langauss_plots=langauss_plots, distributions=distributions)
 		path_to_subplots = []
 		for plot_type in {'scatter matrix plot','langauss fit to Amplitude (V)','langauss fit to Collected charge (V s)'}:
-			for subrun_name, path_to_subrun in Ernestos_employee.list_subruns_of_task('acquire_test_beam_data_sweeping_bias_voltage').items():
-				dummy_bureaucrat = RunBureaucrat(path_to_subrun)
+			for dummy_bureaucrat in Ernestos_employee.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
 				path_to_subplots.append(
 					{
 						'plot_type': plot_type,
@@ -257,12 +255,12 @@ def plots_of_acquire_test_beam_data_sweeping_bias_voltage(bureaucrat:RunBureaucr
 
 def script_core(bureaucrat:RunBureaucrat):
 	John = bureaucrat
-	if John.was_task_run_successfully('beta_scan_sweeping_bias_voltage'):
-		clean_beta_scan_sweeping_bias_voltage(John)
-		plots_of_clean_beta_scan_sweeping_bias_voltage(John)
-	elif John.was_task_run_successfully('beta_scan'):
-		clean_beta_scan(John)
-		clean_beta_scan_plots(John)
+	if John.was_task_run_successfully('test_beam_sweeping_bias_voltage'):
+		clean_test_beam_sweeping_bias_voltage(John)
+		plots_of_test_beam_sweeping_bias_voltage(John)
+	elif John.was_task_run_successfully('test_beam'):
+		clean_test_beam(John)
+		clean_test_beam_plots(John)
 	else:
 		raise RuntimeError(f'Dont know how to process run {repr(John.run_name)} located in {John.path_to_run_directory}.')
 
@@ -292,7 +290,7 @@ def tag_n_trigger_as_background_according_to_the_result_of_clean_test_beam(burea
 	
 	Ernesto = bureaucrat
 	
-	Ernesto.check_these_tasks_were_run_successfully(['acquire_test_beam_data','clean_test_beam'])
+	Ernesto.check_these_tasks_were_run_successfully(['test_beam','clean_test_beam'])
 	
 	if 'n_trigger' not in df.index.names:
 		raise ValueError(f'`"n_trigger"` cannot be found in the index of `df`. I need it in order to match to the results of the `clean_beta_scan` task.')
@@ -318,6 +316,5 @@ if __name__ == '__main__':
 
 	args = parser.parse_args()
 	bureaucrat = RunBureaucrat(Path(args.directory))
-	clean_test_beam(bureaucrat)
-	clean_test_beam_plots(bureaucrat)
+	script_core(bureaucrat)
 	
