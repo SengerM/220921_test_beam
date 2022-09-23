@@ -1,5 +1,5 @@
-slot_number,device_name,caen_channel_number,oscilloscope_channel_number,caen_serial_number
-1,TI113,3,4,13398
-2,TI326,2,2,13398
-3,HPK-2,0,1,13398
-4,TI327,1,3,13398
+slot_number,device_name,signal_name,caen_channel_number,oscilloscope_channel_number,caen_serial_number
+1,TI113,just_a_device,3,4,13398
+2,TI326,DUT_A,2,2,13398
+3,HPK-2,another_device,0,1,13398
+4,TI327,DUT_B,1,3,13398
