@@ -40,7 +40,7 @@ def plot_everything_from_test_beam_sweeping_bias_voltage(bureaucrat:RunBureaucra
 				print(html_doc, file=ofile)
 
 def script_core(bureaucrat:RunBureaucrat):
-	if bureaucrat.was_task_run_successfully('acquire_test_beam'):
+	if bureaucrat.was_task_run_successfully('test_beam'):
 		plot_test_beam(bureaucrat=bureaucrat)
 	elif bureaucrat.was_task_run_successfully('test_beam_sweeping_bias_voltage'):
 		plot_everything_from_test_beam_sweeping_bias_voltage(bureaucrat = bureaucrat)

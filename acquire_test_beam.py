@@ -114,7 +114,9 @@ def plot_test_beam(bureaucrat:RunBureaucrat):
 		
 		variables_to_plot = set(parsed_from_waveforms.columns)
 		
-		data = parsed_from_waveforms.join(extra_stuff.reset_index(drop=False).set_index('slot_number')[['device_name','signal_name']], on='slot_number', how='inner')
+		signal_names = extra_stuff.reset_index(drop=False).set_index('slot_number')['signal_name']
+		signal_names = signal_names[~signal_names.index.duplicated(keep='first')]
+		data = parsed_from_waveforms.join(signal_names, on='slot_number')
 		
 		PATH_FOR_DISTRIBUTION_PLOTS = employee.path_to_directory_of_my_task/'distributions'
 		PATH_FOR_DISTRIBUTION_PLOTS.mkdir(exist_ok=True)
