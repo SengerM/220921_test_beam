@@ -7,6 +7,9 @@ from TheSetup import connect_me_with_the_setup
 from huge_dataframe.SQLiteDataFrame import SQLiteDataFrameDumper # https://github.com/SengerM/huge_dataframe
 import threading
 import warnings
+import sys 
+sys.path.append(str(Path.home()/'scripts_and_codes/repos/robocold_beta_setup/analysis_scripts'))
+from plot_iv_curves import plot_IV_curves_all_together
 
 def measure_iv_curve(bureaucrat:RunBureaucrat, voltages:list, slot_number:int, n_measurements_per_voltage:int, name_to_access_to_the_setup:str, current_compliance:float, silent=False)->Path:
 	"""Measure an IV curve.
@@ -166,6 +169,10 @@ def measure_iv_curves_on_multiple_slots(bureaucrat:RunBureaucrat, voltages:dict,
 		
 		if not silent:
 			print(f'Finished measuring all IV curves.')
+	
+	if not silent:
+		print(f'Doing plots...')
+	plot_IV_curves_all_together(bureaucrat)
 
 if __name__=='__main__':
 	import numpy
@@ -173,10 +180,16 @@ if __name__=='__main__':
 	from configuration_files.current_run import Alberto
 	from utils import create_a_timestamp
 	
+	N_VOLTAGES_PER_IV_CURVE = 5
+	
 	SLOTS = [1,2,3,4]
-	VOLTAGE_VALUES = list(numpy.linspace(0,300,111))
-	VOLTAGE_VALUES += VOLTAGE_VALUES[::-1]
-	VOLTAGES_FOR_EACH_SLOT = {slot: VOLTAGE_VALUES for slot in SLOTS}
+	VOLTAGES_FOR_EACH_SLOT = {
+		1: numpy.linspace(0,305,N_VOLTAGES_PER_IV_CURVE),
+		2: numpy.linspace(0,300,N_VOLTAGES_PER_IV_CURVE),
+		3: numpy.linspace(0,270,N_VOLTAGES_PER_IV_CURVE),
+		4: numpy.linspace(0,350,N_VOLTAGES_PER_IV_CURVE),
+	}
+	VOLTAGES_FOR_EACH_SLOT = {slot_number: list(v)+list(v)[::-1] for slot_number,v in VOLTAGES_FOR_EACH_SLOT.items()}
 	CURRENT_COMPLIANCES = {slot_number:10e-6 for slot_number in SLOTS}
 	NAME_TO_ACCESS_TO_THE_SETUP = f'IV curves measurement script PID: {os.getpid()}'
 	
