@@ -10,22 +10,21 @@ import pickle
 grafica.plotly_utils.utils.set_my_template_as_default()
 
 def time_resolution_vs_bias_voltage_DUT_and_reference_trigger(bureaucrat:RunBureaucrat, signals_names:set, reference_signal_name:str, reference_signal_time_resolution:float, reference_signal_time_resolution_error:float):
-	raise NotImplementedError()
 	Norberto = bureaucrat
 	
-	Norberto.check_these_tasks_were_run_successfully(['jitter_calculation_beta_scan_sweeping_voltage'])
+	Norberto.check_these_tasks_were_run_successfully(['jitter_calculation_test_beam_sweeping_voltage'])
 	
 	
-	if reference_signal_name not in signal_names:
+	if reference_signal_name not in signals_names:
 		raise ValueError(f'`reference_signal_name` is `{repr(reference_signal_name)}` which cannot be found in the measured signal names which are `{repr(signal_names)}`.')
 	
-	DUT_signal_name = signal_names - {reference_signal_name}
+	DUT_signal_name = signals_names - {reference_signal_name}
 	if len(DUT_signal_name) != 1:
 		raise RuntimeError(f'Cannot find the name of the DUT.')
 	DUT_signal_name = list(DUT_signal_name)[0]
 	
 	with Norberto.handle_task('time_resolution_vs_bias_voltage_DUT_and_reference_trigger') as Norbertos_employee:
-		jitter_df = pandas.read_csv(Norberto.path_to_directory_of_task('jitter_calculation_beta_scan_sweeping_voltage')/'jitter_vs_bias_voltage.csv')
+		jitter_df = pandas.read_csv(Norberto.path_to_directory_of_task('jitter_calculation_test_beam_sweeping_voltage')/'jitter_vs_bias_voltage.csv')
 		jitter_df['Jitter (s) ufloat'] = jitter_df.apply(lambda x: ufloat(x['Jitter (s)'],x['Jitter (s) error']), axis=1)
 		reference_signal_time_resolution_ufloat = ufloat(reference_signal_time_resolution, reference_signal_time_resolution_error)
 		jitter_df.set_index(['Bias voltage (V)', 'measurement_name'], inplace=True)
@@ -61,7 +60,7 @@ def time_resolution_vs_bias_voltage_DUT_and_reference_trigger(bureaucrat:RunBure
 			markers = True,
 			title = f'Time resolution vs bias voltage<br><sup>Run: {Norberto.run_name}</sup>',
 		)
-		fig.update_traces(error_y = dict(width = 1, thickness = .8))
+		fig.update_layout(xaxis = dict(autorange = "reversed"))
 		fig.write_html(
 			str(Norbertos_employee.path_to_directory_of_my_task/'time_resolution_vs_bias_voltage.html'),
 			include_plotlyjs = 'cdn',
