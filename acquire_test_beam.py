@@ -212,6 +212,8 @@ def test_beam_sweeping_bias_voltage(bureaucrat:RunBureaucrat, the_setup, name_to
 		if not silent:
 			print(f'Control of hardware acquired!')
 		for i_voltage in range(len(bias_voltages[slots_numbers[0]])):
+			if not silent:
+				print(f'About to measure i_voltage={i_voltage}...')
 			for slot_number in slots_numbers:
 				if not silent:
 					print(f'Setting voltage {bias_voltages[slot_number][i_voltage]} to slot_number {slot_number}...')
