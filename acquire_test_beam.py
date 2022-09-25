@@ -257,9 +257,9 @@ if __name__=='__main__':
 			slots_numbers = [1,2,3,4],
 			bias_voltages = {
 				1: VOLTAGES,
-				2: [288]*len(VOLTAGES),
+				2: VOLTAGES,
 				3: VOLTAGES,
-				4: VOLTAGES,
+				4: [200]*len(VOLTAGES),
 			},
 			delete_waveforms_file = False,
 			silent = False,
