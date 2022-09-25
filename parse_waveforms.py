@@ -75,6 +75,8 @@ def plot_waveform(signal):
 def parse_waveforms(bureaucrat:RunBureaucrat, name_of_task_that_produced_the_waveforms_to_parse:str, continue_from_where_we_left_last_time:bool=True, silent:bool=True):
 	Quique = bureaucrat
 	
+	Quique.check_these_tasks_were_run_successfully(name_of_task_that_produced_the_waveforms_to_parse)
+	
 	with Quique.handle_task('parse_waveforms', drop_old_data=not continue_from_where_we_left_last_time) as Quiques_employee:
 		try:
 			index_of_waveforms_already_parsed_in_the_past = set(load_whole_dataframe(Quiques_employee.path_to_directory_of_my_task/'parsed_from_waveforms.sqlite').index)
@@ -144,7 +146,7 @@ if __name__=='__main__':
 	args = parser.parse_args()
 	parse_waveforms(
 		bureaucrat = RunBureaucrat(Path(args.directory)),
-		name_of_task_that_produced_the_waveforms_to_parse = 'acquire_test_beam_data',
+		name_of_task_that_produced_the_waveforms_to_parse = 'test_beam',
 		silent = False,
 		continue_from_where_we_left_last_time = True,
 	)
