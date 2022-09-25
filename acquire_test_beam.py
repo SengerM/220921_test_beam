@@ -239,13 +239,13 @@ def test_beam_sweeping_bias_voltage(bureaucrat:RunBureaucrat, the_setup, name_to
 if __name__=='__main__':
 	import os
 	from configuration_files.current_run import Alberto
-	from utils import create_a_timestamp
+	from utils import create_a_timestamp, interlace
 	
 	NAME_TO_ACCESS_TO_THE_SETUP = f'acquire test bean PID: {os.getpid()}'
 	
 	the_setup = connect_me_with_the_setup()
 	
-	VOLTAGES = numpy.linspace(222,150,3)
+	VOLTAGES = interlace(numpy.linspace(0,280,22))
 	
 	with Alberto.handle_task('test_beam_data', drop_old_data=False) as employee:
 		Mariano = employee.create_subrun(create_a_timestamp() + '_' + input('Measurement name? ').replace(' ','_'))
@@ -253,12 +253,12 @@ if __name__=='__main__':
 			bureaucrat = Mariano,
 			the_setup = the_setup,
 			name_to_access_to_the_setup = NAME_TO_ACCESS_TO_THE_SETUP,
-			n_triggers_per_voltage = 999,
+			n_triggers_per_voltage = 11111,
 			slots_numbers = [1,2,3,4],
 			bias_voltages = {
-				1: [220]*len(VOLTAGES),
-				2: VOLTAGES,
-				3: [99]*len(VOLTAGES),
+				1: VOLTAGES,
+				2: [288]*len(VOLTAGES),
+				3: VOLTAGES,
 				4: VOLTAGES,
 			},
 			delete_waveforms_file = False,
@@ -268,3 +268,16 @@ if __name__=='__main__':
 				telegram_chat_id = my_telegram_bots.chat_ids['Robobot TCT setup'],
 			),
 		)
+		# ~ acquire_and_parse(
+			# ~ bureaucrat = Mariano,
+			# ~ the_setup = the_setup,
+			# ~ name_to_access_to_the_setup = NAME_TO_ACCESS_TO_THE_SETUP,
+			# ~ n_triggers = 222,
+			# ~ slots_numbers = [1,2,3,4],
+			# ~ delete_waveforms_file = False,
+			# ~ silent = False,
+			# ~ reporter = TelegramReporter(
+				# ~ telegram_token = my_telegram_bots.robobot.token, 
+				# ~ telegram_chat_id = my_telegram_bots.chat_ids['Robobot TCT setup'],
+			# ~ ),
+		# ~ )

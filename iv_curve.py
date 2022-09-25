@@ -193,14 +193,14 @@ if __name__=='__main__':
 	from configuration_files.current_run import Alberto
 	from utils import create_a_timestamp
 	
-	N_VOLTAGES_PER_IV_CURVE = 5
+	N_VOLTAGES_PER_IV_CURVE = 33
 	
 	SLOTS = [1,2,3,4]
 	VOLTAGES_FOR_EACH_SLOT = {
-		1: numpy.linspace(0,305,N_VOLTAGES_PER_IV_CURVE),
+		1: numpy.linspace(0,290,N_VOLTAGES_PER_IV_CURVE),
 		2: numpy.linspace(0,300,N_VOLTAGES_PER_IV_CURVE),
-		3: numpy.linspace(0,270,N_VOLTAGES_PER_IV_CURVE),
-		4: numpy.linspace(0,350,N_VOLTAGES_PER_IV_CURVE),
+		3: numpy.linspace(0,300,N_VOLTAGES_PER_IV_CURVE),
+		4: numpy.linspace(0,290,N_VOLTAGES_PER_IV_CURVE),
 	}
 	VOLTAGES_FOR_EACH_SLOT = {slot_number: list(v)+list(v)[::-1] for slot_number,v in VOLTAGES_FOR_EACH_SLOT.items()}
 	CURRENT_COMPLIANCES = {slot_number:10e-6 for slot_number in SLOTS}
