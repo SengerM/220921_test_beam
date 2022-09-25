@@ -188,4 +188,11 @@ if __name__ == '__main__':
 	)
 
 	args = parser.parse_args()
-	script_core(RunBureaucrat(Path(args.directory)))
+	Arnoldo = RunBureaucrat(Path(args.directory))
+	time_resolution_vs_bias_voltage_DUT_and_reference_trigger(
+		bureaucrat = Arnoldo,
+		signals_names = {'TI_B','TI_C'},
+		reference_signal_name = 'TI_B',
+		reference_signal_time_resolution = 33e-12,
+		reference_signal_time_resolution_error = 1e-12,
+	)

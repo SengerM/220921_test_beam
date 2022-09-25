@@ -27,7 +27,6 @@ def apply_cuts(data_df, cuts_df):
 	of the variables in any of the channels is outside the range, it will
 	be `False`.
 	"""
-	
 	set_of_signal_names_on_which_to_apply_cuts = set(cuts_df['signal_name'])
 	set_of_measured_signals = set(data_df['signal_name'])
 	if not set_of_signal_names_on_which_to_apply_cuts.issubset(set_of_measured_signals):
@@ -257,10 +256,10 @@ def script_core(bureaucrat:RunBureaucrat):
 	John = bureaucrat
 	if John.was_task_run_successfully('test_beam_sweeping_bias_voltage'):
 		clean_test_beam_sweeping_bias_voltage(John)
-		plots_of_test_beam_sweeping_bias_voltage(John)
+		plots_of_test_beam_sweeping_bias_voltage(John, scatter_plot=False)
 	elif John.was_task_run_successfully('test_beam'):
 		clean_test_beam(John)
-		clean_test_beam_plots(John)
+		clean_test_beam_plots(John, distributions=True)
 	else:
 		raise RuntimeError(f'Dont know how to process run {repr(John.run_name)} located in {John.path_to_run_directory}.')
 

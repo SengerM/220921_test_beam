@@ -514,7 +514,7 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 	script_core(
 		RunBureaucrat(Path(args.directory)),
-		CFD_thresholds = {'DUT_A': 30, 'DUT_B': 30},
-		signals_names = {'DUT_A','DUT_B'},
+		CFD_thresholds = {'TI_B': 20, 'TI_C': 20},
+		signals_names = {'TI_B','TI_C'},
 		force = args.force,
 	)
