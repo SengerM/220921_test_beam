@@ -131,6 +131,27 @@ def parse_waveforms(bureaucrat:RunBureaucrat, name_of_task_that_produced_the_wav
 							include_plotlyjs = 'cdn',
 						)
 
+def parse_waveforms_recursively(bureaucrat:RunBureaucrat, name_of_task_that_produced_the_waveforms_to_parse:str, continue_from_where_we_left_last_time:bool=True, silent:bool=True):
+	if bureaucrat.was_task_run_successfully(name_of_task_that_produced_the_waveforms_to_parse):
+		if not silent:
+			print(f'Going to parse {bureaucrat.run_name}...')
+		parse_waveforms(
+			bureaucrat = bureaucrat,
+			name_of_task_that_produced_the_waveforms_to_parse = name_of_task_that_produced_the_waveforms_to_parse,
+			continue_from_where_we_left_last_time = continue_from_where_we_left_last_time,
+			silent = silent,
+		)
+	else:
+		for path_to_task in bureaucrat.path_to_run_directory.iterdir():
+			if path_to_task.is_dir():
+				for subrun in bureaucrat.list_subruns_of_task(path_to_task.parts[-1]):
+					parse_waveforms_recursively(
+						bureaucrat = subrun,
+						name_of_task_that_produced_the_waveforms_to_parse = name_of_task_that_produced_the_waveforms_to_parse,
+						continue_from_where_we_left_last_time = continue_from_where_we_left_last_time,
+						silent = silent,
+					)
+
 if __name__=='__main__':
 	import argparse
 
@@ -144,7 +165,7 @@ if __name__=='__main__':
 	)
 
 	args = parser.parse_args()
-	parse_waveforms(
+	parse_waveforms_recursively(
 		bureaucrat = RunBureaucrat(Path(args.directory)),
 		name_of_task_that_produced_the_waveforms_to_parse = 'test_beam',
 		silent = False,
