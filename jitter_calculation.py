@@ -14,6 +14,7 @@ import multiprocessing
 import pickle
 import uncertainties
 import numpy
+from summarize_parameters import read_summarized_data
 
 N_BOOTSTRAP = 33
 STATISTIC_TO_USE_FOR_THE_FINAL_JITTER_CALCULATION = 'sigma_from_gaussian_fit' # For the time resolution I will use the `sigma_from_gaussian_fit` because in practice ends up being the most robust and reliable of all.
@@ -440,35 +441,28 @@ def jitter_calculation_test_beam_sweeping_voltage(bureaucrat:RunBureaucrat, sign
 				Raúl.path_to_directory_of_task('jitter_calculation_test_beam')/'jitter.csv',
 				names = ['variable_name','value'],
 			)
-			summary = pandas.read_pickle(Raúl.path_to_directory_of_task('summarize_test_beam_extra_stuff')/'summary.pickle')
-			summary = summary.droplevel(['slot_number','device_name'])
 			with open(Raúl.path_to_directory_of_task('jitter_calculation_test_beam')/'signals_names.pickle', 'rb') as f:
 				signals_names_for_the_jitter_calculation = pickle.load(f)
-			bias_voltages = [uncertainties.ufloat(summary.loc[signal_name,('Bias voltage (V)','mean')],summary.loc[signal_name,('Bias voltage (V)','std')]) for signal_name in signals_names_for_the_jitter_calculation]
-			bias_voltage = numpy.mean(bias_voltages)
 			submeasurement_jitter.set_index('variable_name', inplace=True)
 			submeasurement_jitter = submeasurement_jitter['value']
-			submeasurement_jitter['measurement_name'] = Raúl.run_name
-			submeasurement_jitter['Bias voltage (V)'] = bias_voltage.nominal_value
-			submeasurement_jitter['Bias voltage (V) error'] = bias_voltage.std_dev
+			submeasurement_jitter['run_name'] = Raúl.run_name
 			jitters.append(submeasurement_jitter)
-		
 		jitter_df = pandas.DataFrame.from_records(jitters)
 		jitter_df.columns.rename('', inplace=True)
-		jitter_df.to_csv(Norbertos_employee.path_to_directory_of_my_task/'jitter_vs_bias_voltage.csv', index=False)
+		jitter_df.set_index('run_name', inplace=True)
+		jitter_df.to_pickle(Norbertos_employee.path_to_directory_of_my_task/'jitter_vs_run_name.pickle')
 		
 		fig = px.line(
-			jitter_df.sort_values('Bias voltage (V)'),
-			x = 'Bias voltage (V)',
+			jitter_df.reset_index().sort_values('run_name'),
+			x = 'run_name',
 			y = 'Jitter (s)',
 			error_y = 'Jitter (s) error',
-			error_x = 'Bias voltage (V) error',
 			markers = True,
-			title = f'Jitter vs bias voltage<br><sup>Run: {Norberto.run_name}</sup>',
+			title = f'Jitter vs run_name<br><sup>Run: {Norberto.run_name}</sup>',
 		)
 		fig.update_layout(xaxis = dict(autorange = "reversed"))
 		fig.write_html(
-			str(Norbertos_employee.path_to_directory_of_my_task/'jitter_vs_bias_voltage.html'),
+			str(Norbertos_employee.path_to_directory_of_my_task/'jitter_vs_run_name.html'),
 			include_plotlyjs = 'cdn',
 		)
 
