@@ -6,6 +6,7 @@ import grafica.plotly_utils.utils # https://github.com/SengerM/grafica
 from uncertainties import ufloat
 from huge_dataframe.SQLiteDataFrame import load_whole_dataframe # https://github.com/SengerM/huge_dataframe
 import pickle
+from summarize_parameters import read_summarized_data
 
 grafica.plotly_utils.utils.set_my_template_as_default()
 
@@ -66,23 +67,23 @@ def time_resolution_vs_bias_voltage_DUT_and_reference_trigger(bureaucrat:RunBure
 			include_plotlyjs = 'cdn',
 		)
 
-def time_resolution_vs_bias_voltage_twin_devices(bureaucrat:RunBureaucrat):
+def time_resolution_vs_bias_voltage_twin_devices(bureaucrat:RunBureaucrat, signals_names:set):
 	Norberto = bureaucrat
 	
 	Norberto.check_these_tasks_were_run_successfully(['jitter_calculation_test_beam_sweeping_voltage','test_beam_sweeping_bias_voltage'])
 	
 	with Norberto.handle_task('time_resolution_vs_bias_voltage_twin_devices') as Norbertos_employee:
-		jitter_df = pandas.read_csv(Norberto.path_to_directory_of_task('jitter_calculation_test_beam_sweeping_voltage')/'jitter_vs_bias_voltage.csv')
+		jitter_df = pandas.read_pickle(Norberto.path_to_directory_of_task('jitter_calculation_test_beam_sweeping_voltage')/'jitter_vs_bias_voltage.pickle')
 		jitter_df['Jitter (s) ufloat'] = jitter_df.apply(lambda x: ufloat(x['Jitter (s)'],x['Jitter (s) error']), axis=1)
-		jitter_df.set_index(['Bias voltage (V)', 'measurement_name'], inplace=True)
-		signals_names = []
-		for subrun_bureaucrat in Norberto.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
-			subrun_bureaucrat.check_these_tasks_were_run_successfully('jitter_calculation_test_beam')
-			_ = pickle.load(open(subrun_bureaucrat.path_to_directory_of_task('jitter_calculation_test_beam')/'signals_names.pickle', 'rb'))
-			signals_names.append(tuple(sorted(_)))
-		if len(set(signals_names)) != 1 or len(signals_names[0])!=2:
-			raise ValueError(f'Something is wrong with the signals names, please come here to the code and check.')
-		signals_names = set(signals_names[0])
+		
+		summarized_data = read_summarized_data(bureaucrat)
+		summarized_data.columns = [f'{col[0]} {col[1]}' for col in summarized_data.columns]
+		summarized_data.reset_index(level='device_name',inplace=True,drop=False)
+		summarized_data.reset_index(level='slot_number',inplace=True,drop=True)
+		
+		measured_signals_names = set(summarized_data.index.get_level_values('signal_name'))
+		if len(signals_names-measured_signals_names) != 0:
+			raise ValueError(f'`signals_names` = {signals_names} are not present in the signals names found in the measured data, which are {measured_signals_names}.')
 		
 		DUTs_time_resolution = []
 		for signal_name in signals_names:
@@ -97,16 +98,16 @@ def time_resolution_vs_bias_voltage_twin_devices(bureaucrat:RunBureaucrat):
 			DUTs_time_resolution.append(DUT_time_resolution_df)
 		DUTs_time_resolution = pandas.concat(DUTs_time_resolution)
 		
-		time_resolution_df = DUTs_time_resolution
+		DUTs_time_resolution.to_pickle(Norbertos_employee.path_to_directory_of_my_task/'time_resolution.pickle')
 		
-		time_resolution_df.to_pickle(Norbertos_employee.path_to_directory_of_my_task/'time_resolution.pickle')
-		
+		df = DUTs_time_resolution.join(summarized_data, on=['signal_name','run_name'])
 		fig = px.line(
-			time_resolution_df.sort_index(level=['signal_name','Bias voltage (V)']).reset_index(drop=False),
-			x = 'Bias voltage (V)',
+			df.reset_index(drop=False).sort_values(['signal_name','Bias voltage (V) mean']),
+			x = 'Bias voltage (V) mean',
 			y = f'Time resolution (s)',
+			error_x = 'Bias voltage (V) std',
 			error_y = f'Time resolution (s) error',
-			color = 'signal_name',
+			color = 'device_name',
 			markers = True,
 			title = f'Time resolution vs bias voltage<br><sup>Run: {Norberto.run_name}</sup>',
 		)
@@ -189,10 +190,16 @@ if __name__ == '__main__':
 
 	args = parser.parse_args()
 	Arnoldo = RunBureaucrat(Path(args.directory))
-	time_resolution_vs_bias_voltage_DUT_and_reference_trigger(
+	
+	time_resolution_vs_bias_voltage_twin_devices(
 		bureaucrat = Arnoldo,
-		signals_names = {'TI_B','TI_C'},
-		reference_signal_name = 'TI_B',
-		reference_signal_time_resolution = 33e-12,
-		reference_signal_time_resolution_error = 1e-12,
+		signals_names = {'TI_1','TI_2'},
 	)
+	
+	# ~ time_resolution_vs_bias_voltage_DUT_and_reference_trigger(
+		# ~ bureaucrat = Arnoldo,
+		# ~ signals_names = {'TI_B','TI_C'},
+		# ~ reference_signal_name = 'TI_B',
+		# ~ reference_signal_time_resolution = 33e-12,
+		# ~ reference_signal_time_resolution_error = 1e-12,
+	# ~ )
