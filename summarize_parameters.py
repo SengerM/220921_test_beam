@@ -27,6 +27,22 @@ def summarize_test_beam_extra_stuff_recursively(bureaucrat:RunBureaucrat, force:
 			for sub_bureaucrat in bureaucrat.list_subruns_of_task(task.parts[-1]):
 				summarize_test_beam_extra_stuff_recursively(sub_bureaucrat, force=force)
 
+def read_summarized_data(bureaucrat:RunBureaucrat):
+	if bureaucrat.was_task_run_successfully('test_beam'): # This is the most fundamental kind of run, so just read.
+		bureaucrat.check_these_tasks_were_run_successfully('summarize_test_beam_extra_stuff')
+		return pandas.read_pickle(bureaucrat.path_to_directory_of_task('summarize_test_beam_extra_stuff')/'summary.pickle')
+	elif bureaucrat.was_task_run_successfully('test_beam_sweeping_bias_voltage'):
+		summarized = []
+		for subrun in bureaucrat.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
+			subrun.check_these_tasks_were_run_successfully('summarize_test_beam_extra_stuff')
+			_ = read_summarized_data(subrun)
+			_['run_name'] = subrun.run_name
+			_.set_index('run_name',append=True,inplace=True)
+			summarized.append(_)
+		return pandas.concat(summarized)
+	else:
+		raise RuntimeError(f'Dont know how to read summarized data from run {repr(bureaucrat.run_name)} located in {repr(str(bureaucrat.path_to_run_directory))}.')
+
 if __name__ == '__main__':
 	import argparse
 
