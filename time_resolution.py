@@ -109,7 +109,12 @@ def time_resolution_vs_bias_voltage_twin_devices(bureaucrat:RunBureaucrat, signa
 			error_y = f'Time resolution (s) error',
 			color = 'device_name',
 			markers = True,
-			title = f'Time resolution vs bias voltage<br><sup>Run: {Norberto.run_name}</sup>',
+			title = f'Time resolution vs bias voltage (jitter/√2)<br><sup>Run: {Norberto.run_name}</sup>',
+			hover_data = ['signal_name','Bias current (A) mean'],
+			labels = {
+				'Bias voltage (V) mean': 'Bias voltage (V)',
+				'Bias current (A) mean': 'Bias current (A)',
+			},
 		)
 		fig.update_traces(error_y = dict(width = 1, thickness = .8))
 		fig.update_layout(xaxis = dict(autorange = "reversed"))
