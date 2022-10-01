@@ -58,15 +58,19 @@ def plot_everything_from_test_beam_sweeping_bias_voltage(bureaucrat:RunBureaucra
 	Ernesto.check_these_tasks_were_run_successfully('test_beam_sweeping_bias_voltage')
 	
 	with Ernesto.handle_task('plot_everything_from_test_beam_sweeping_bias_voltage') as Ernestos_employee:
-		for b in Ernesto.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
-			plot_test_beam(bureaucrat=b)
+		# ~ for b in Ernesto.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
+			# ~ plot_test_beam(bureaucrat=b)
 		path_to_subplots = []
-		for plot_type in {'Amplitude (V) ecdf','scatter matrix plot'}:
+		for plot_type in {'Amplitude (V) ecdf','scatter_matrix_plot','Collected charge (V s)'}:
 			for subrun in Ernestos_employee.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
+				if plot_type != 'scatter_matrix_plot':
+					path_to_plot = Path('..')/(subrun.path_to_directory_of_task('plot_test_beam')/f'distributions/{plot_type}.html').relative_to(Ernesto.path_to_run_directory)
+				else:
+					path_to_plot = Path('..')/(subrun.path_to_directory_of_task('plot_test_beam')/f'{plot_type}.html').relative_to(Ernesto.path_to_run_directory)
 				path_to_subplots.append(
 					{
 						'plot_type': plot_type,
-						'path_to_plot': Path('..')/(subrun.path_to_directory_of_task('plot_test_beam')/f'distributions/{plot_type}.html').relative_to(Ernesto.path_to_run_directory),
+						'path_to_plot': path_to_plot,
 						'run_name': subrun.run_name,
 					}
 				)
@@ -76,7 +80,7 @@ def plot_everything_from_test_beam_sweeping_bias_voltage(bureaucrat:RunBureaucra
 			html_doc = dominate.document(title=document_title)
 			with html_doc:
 				dominate.tags.h1(document_title)
-				if plot_type in {'scatter matrix plot'}: # This is because these kind of plots draw a lot of memory and will cause problems if they are loaded all together.
+				if plot_type in {'scatter_matrix_plot'}: # This is because these kind of plots draw a lot of memory and will cause problems if they are loaded all together.
 					with dominate.tags.ul():
 						for idx,row in path_to_subplots_df.loc[plot_type].sort_values('run_name').iterrows():
 							with dominate.tags.li():
