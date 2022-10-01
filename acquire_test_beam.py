@@ -105,54 +105,6 @@ def test_beam(bureaucrat:RunBureaucrat, the_setup, name_to_access_to_the_setup:s
 			if not silent:
 				print(f'Finished acquiring n_trigger {n_trigger}.')
 
-def plot_test_beam(bureaucrat:RunBureaucrat):
-	bureaucrat.check_these_tasks_were_run_successfully(['test_beam','parse_waveforms'])
-	
-	with bureaucrat.handle_task('plot_test_beam') as employee:
-		parsed_from_waveforms = load_whole_dataframe(bureaucrat.path_to_directory_of_task('parse_waveforms')/'parsed_from_waveforms.sqlite')
-		extra_stuff = load_whole_dataframe(bureaucrat.path_to_directory_of_task('test_beam')/'extra_stuff.sqlite')
-		
-		variables_to_plot = set(parsed_from_waveforms.columns)
-		
-		signal_names = extra_stuff.reset_index(drop=False).set_index('slot_number')['signal_name']
-		signal_names = signal_names[~signal_names.index.duplicated(keep='first')]
-		data = parsed_from_waveforms.join(signal_names, on='slot_number')
-		
-		PATH_FOR_DISTRIBUTION_PLOTS = employee.path_to_directory_of_my_task/'distributions'
-		PATH_FOR_DISTRIBUTION_PLOTS.mkdir(exist_ok=True)
-		for variable in variables_to_plot:
-			fig = px.ecdf(
-				data.reset_index(drop=False),
-				x = variable,
-				color = 'signal_name',
-				title = f'{variable} distribution<br><sup>Run: {bureaucrat.run_name}',
-			)
-			fig.write_html(
-				PATH_FOR_DISTRIBUTION_PLOTS/f'{variable} ecdf.html',
-				include_plotlyjs = 'cdn',
-			)
-		dimensions = set(variables_to_plot) - {f't_{i} (s)' for i in [10,20,30,40,60,70,80,90]} - {f'Time over {i}% (s)' for i in [10,30,40,50,60,70,80,90]} - {'device_name'} - {'signal_name'}
-		fig = px.scatter_matrix(
-			data.reset_index(drop=False),
-			dimensions = sorted(dimensions),
-			color = 'signal_name',
-			title = f'Scatter matrix plot<br><sup>Run: {bureaucrat.run_name}',
-		)
-		fig.update_traces(diagonal_visible=False, showupperhalf=False, marker = {'size': 3})
-		for k in range(len(fig.data)):
-			fig.data[k].update(
-				selected = dict(
-					marker = dict(
-						opacity = 1,
-						color = 'black',
-					)
-				),
-			)
-		fig.write_html(
-			employee.path_to_directory_of_my_task/'scatter_matrix_plot.html',
-			include_plotlyjs = 'cdn',
-		)
-
 def acquire_and_parse(bureaucrat:RunBureaucrat, the_setup, name_to_access_to_the_setup:str, n_triggers:int, slots_numbers:list, delete_waveforms_file:bool, reporter:TelegramReporter=None, silent:bool=True):
 	"""Perform a `TCT_1D_scan` and parse in parallel."""
 	Ernestino = bureaucrat
