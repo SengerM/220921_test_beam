@@ -217,7 +217,7 @@ def clean_test_beam_plots(bureaucrat:RunBureaucrat, scatter_plot:bool=True, lang
 					include_plotlyjs = 'cdn',
 				)
 
-def plots_of_test_beam_sweeping_bias_voltage(bureaucrat:RunBureaucrat, scatter_plot:bool=True, langauss_plots:bool=True, distributions:bool=False):
+def plots_of_clean_test_beam_sweeping_bias_voltage(bureaucrat:RunBureaucrat, scatter_plot:bool=True, langauss_plots:bool=True, distributions:bool=False):
 	Ernesto = bureaucrat
 	Ernesto.check_these_tasks_were_run_successfully('test_beam_sweeping_bias_voltage')
 	
@@ -256,7 +256,7 @@ def script_core(bureaucrat:RunBureaucrat):
 	John = bureaucrat
 	if John.was_task_run_successfully('test_beam_sweeping_bias_voltage'):
 		clean_test_beam_sweeping_bias_voltage(John)
-		plots_of_test_beam_sweeping_bias_voltage(John, scatter_plot=False)
+		plots_of_clean_test_beam_sweeping_bias_voltage(John, scatter_plot=True)
 	elif John.was_task_run_successfully('test_beam'):
 		clean_test_beam(John)
 		clean_test_beam_plots(John, distributions=True)
