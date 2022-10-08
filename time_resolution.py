@@ -24,12 +24,12 @@ def time_resolution_vs_bias_voltage_DUT_and_reference_trigger(bureaucrat:RunBure
 	DUT_signal_name = list(DUT_signal_name)[0]
 	
 	with Norberto.handle_task('time_resolution_vs_bias_voltage_DUT_and_reference_trigger') as Norbertos_employee:
-		jitter_df = pandas.read_pickle(Norberto.path_to_directory_of_task('jitter_calculation_test_beam_sweeping_voltage')/'jitter_vs_run_name.pickle')
-		jitter_df['Jitter (s) ufloat'] = jitter_df.apply(lambda x: ufloat(x['Jitter (s)'],x['Jitter (s) error']), axis=1)
+		jitter = pandas.read_pickle(Norberto.path_to_directory_of_task('jitter_calculation_test_beam_sweeping_voltage')/'jitter_vs_run_name.pickle')
+		jitter['Jitter (s) ufloat'] = jitter.apply(lambda x: ufloat(x['Jitter (s)'],x['Jitter (s) error']), axis=1)
 		
 		reference_signal_time_resolution_ufloat = ufloat(reference_signal_time_resolution, reference_signal_time_resolution_error)
 		
-		DUT_time_resolution = (jitter_df['Jitter (s) ufloat']**2-reference_signal_time_resolution_ufloat**2)**.5
+		DUT_time_resolution = (jitter['Jitter (s) ufloat']**2-reference_signal_time_resolution_ufloat**2)**.5
 		DUT_time_resolution.rename(f'Time resolution (s) ufloat', inplace=True)
 		DUT_time_resolution_df = DUT_time_resolution.to_frame()
 		DUT_time_resolution_df[f'Time resolution (s)'] = DUT_time_resolution_df[f'Time resolution (s) ufloat'].apply(lambda x: x.nominal_value)
