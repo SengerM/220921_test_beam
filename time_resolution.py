@@ -74,8 +74,6 @@ def time_resolution_vs_bias_voltage_DUT_and_reference_trigger(bureaucrat:RunBure
 				'Bias current (A) mean': 'Bias current (A)',
 			},
 		)
-		fig.update_traces(error_y = dict(width = 1, thickness = .8))
-		fig.update_layout(xaxis = dict(autorange = "reversed"))
 		fig.write_html(
 			str(Norbertos_employee.path_to_directory_of_my_task/'time_resolution_vs_bias_voltage.html'),
 			include_plotlyjs = 'cdn',
