@@ -354,7 +354,7 @@ def jitter_calculation_test_beam(bureaucrat:RunBureaucrat, signals_names:set, CF
 					)
 				)
 				fitted_mu, fitted_sigma, fitted_amplitude = fit_gaussian_to_samples(selected_Δt_samples)
-				x_axis_values = sorted(list(np.linspace(min(selected_Δt_samples),max(selected_Δt_samples),99)) + list(np.linspace(fitted_mu-5*fitted_sigma,fitted_mu+5*fitted_sigma,99)))
+				x_axis_values = numpy.array(sorted(list(np.linspace(min(selected_Δt_samples),max(selected_Δt_samples),99)) + list(np.linspace(fitted_mu-5*fitted_sigma,fitted_mu+5*fitted_sigma,99))))
 				fig.add_trace(
 					go.Scatter(
 						x = x_axis_values,
@@ -383,9 +383,10 @@ def jitter_calculation_test_beam(bureaucrat:RunBureaucrat, signals_names:set, CF
 			{
 				'Jitter (s)': df.loc['real data','Jitter (s)'],
 				'Jitter (s) error': df['Jitter (s)'].std(),
+				'signals_names': tuple(sorted(set(signals_names))),
 			}
 		)
-		jitter.to_csv(Norbertos_employee.path_to_directory_of_my_task/'jitter.csv', header=False)
+		jitter.to_pickle(Norbertos_employee.path_to_directory_of_my_task/'jitter.pickle')
 		
 		fig = go.Figure()
 		fig.update_layout(
@@ -418,9 +419,6 @@ def jitter_calculation_test_beam(bureaucrat:RunBureaucrat, signals_names:set, CF
 			include_plotlyjs = 'cdn',
 		)
 		
-		with open(Norbertos_employee.path_to_directory_of_my_task/'signals_names.pickle', 'wb') as ofile:
-			pickle.dump(signals_names, ofile)
-
 def jitter_calculation_test_beam_sweeping_voltage(bureaucrat:RunBureaucrat, signals_names:set, CFD_thresholds='best', force_calculation_on_submeasurements:bool=False, number_of_processes:int=1):
 	Norberto = bureaucrat
 	
@@ -437,30 +435,22 @@ def jitter_calculation_test_beam_sweeping_voltage(bureaucrat:RunBureaucrat, sign
 		jitters = []
 		for Raúl in Norberto.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
 			Raúl.check_these_tasks_were_run_successfully('summarize_test_beam_extra_stuff')
-			submeasurement_jitter = pandas.read_csv(
-				Raúl.path_to_directory_of_task('jitter_calculation_test_beam')/'jitter.csv',
-				names = ['variable_name','value'],
-			)
-			with open(Raúl.path_to_directory_of_task('jitter_calculation_test_beam')/'signals_names.pickle', 'rb') as f:
-				signals_names_for_the_jitter_calculation = pickle.load(f)
-			submeasurement_jitter.set_index('variable_name', inplace=True)
-			submeasurement_jitter = submeasurement_jitter['value']
+			submeasurement_jitter = pandas.read_pickle(Raúl.path_to_directory_of_task('jitter_calculation_test_beam')/'jitter.pickle')
 			submeasurement_jitter['run_name'] = Raúl.run_name
 			jitters.append(submeasurement_jitter)
-		jitter_df = pandas.DataFrame.from_records(jitters)
-		jitter_df.columns.rename('', inplace=True)
-		jitter_df.set_index('run_name', inplace=True)
-		jitter_df.to_pickle(Norbertos_employee.path_to_directory_of_my_task/'jitter_vs_run_name.pickle')
+		jitter = pandas.DataFrame.from_records(jitters)
+		jitter.set_index(['run_name','signals_names'], inplace=True)
+		
+		jitter.to_pickle(Norbertos_employee.path_to_directory_of_my_task/'jitter.pickle')
 		
 		fig = px.line(
-			jitter_df.reset_index().sort_values('run_name'),
+			jitter.reset_index().sort_values('run_name'),
 			x = 'run_name',
 			y = 'Jitter (s)',
 			error_y = 'Jitter (s) error',
 			markers = True,
 			title = f'Jitter vs run_name<br><sup>Run: {Norberto.run_name}</sup>',
 		)
-		fig.update_layout(xaxis = dict(autorange = "reversed"))
 		fig.write_html(
 			str(Norbertos_employee.path_to_directory_of_my_task/'jitter_vs_run_name.html'),
 			include_plotlyjs = 'cdn',
@@ -508,7 +498,7 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 	script_core(
 		RunBureaucrat(Path(args.directory)),
-		CFD_thresholds = {'TI_B': 20, 'TI_C': 20},
-		signals_names = {'TI_B','TI_C'},
+		CFD_thresholds = {'TI_A': 20, 'TI_B': 20},
+		signals_names = {'TI_A','TI_B'},
 		force = args.force,
 	)
