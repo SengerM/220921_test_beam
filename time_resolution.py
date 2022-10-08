@@ -24,7 +24,15 @@ def time_resolution_vs_bias_voltage_DUT_and_reference_trigger(bureaucrat:RunBure
 	DUT_signal_name = list(DUT_signal_name)[0]
 	
 	with Norberto.handle_task('time_resolution_vs_bias_voltage_DUT_and_reference_trigger') as Norbertos_employee:
-		jitter = pandas.read_pickle(Norberto.path_to_directory_of_task('jitter_calculation_test_beam_sweeping_voltage')/'jitter_vs_run_name.pickle')
+		jitter = pandas.read_pickle(Norberto.path_to_directory_of_task('jitter_calculation_test_beam_sweeping_voltage')/'jitter.pickle')
+		
+		jitter_was_calculated_between_these_signals = set(jitter.index.get_level_values('signals_names'))
+		if len(jitter_was_calculated_between_these_signals) != 1:
+			raise RuntimeError(f'Cannot use the jitter data, check this error!')
+		jitter_was_calculated_between_these_signals = set(list(jitter_was_calculated_between_these_signals)[0])
+		if jitter_was_calculated_between_these_signals != set(signals_names):
+			raise RuntimeError(f'`signals_names` are {set(signals_names)} but signals in the calculation of the jitter are {jitter_was_calculated_between_these_signals}, they should match!')
+		
 		jitter['Jitter (s) ufloat'] = jitter.apply(lambda x: ufloat(x['Jitter (s)'],x['Jitter (s) error']), axis=1)
 		
 		reference_signal_time_resolution_ufloat = ufloat(reference_signal_time_resolution, reference_signal_time_resolution_error)
@@ -36,6 +44,7 @@ def time_resolution_vs_bias_voltage_DUT_and_reference_trigger(bureaucrat:RunBure
 		DUT_time_resolution_df[f'Time resolution (s) error'] = DUT_time_resolution_df[f'Time resolution (s) ufloat'].apply(lambda x: x.std_dev)
 		DUT_time_resolution_df.drop(columns=f'Time resolution (s) ufloat', inplace=True)
 		DUT_time_resolution_df['signal_name'] = DUT_signal_name
+		DUT_time_resolution_df.reset_index(level='signals_names', drop=True, inplace=True)
 		
 		reference_signal_time_resolution_df = pandas.DataFrame(
 			{
@@ -60,7 +69,7 @@ def time_resolution_vs_bias_voltage_DUT_and_reference_trigger(bureaucrat:RunBure
 		df = time_resolution.join(summary)
 		
 		fig = px.line(
-			df.reset_index(drop=False).sort_values(['signal_name','Bias voltage (V) mean']),
+			df.reset_index(drop=False).sort_values(['device_name','Bias voltage (V) mean']),
 			x = 'Bias voltage (V) mean',
 			y = f'Time resolution (s)',
 			error_x = 'Bias voltage (V) std',
@@ -74,6 +83,7 @@ def time_resolution_vs_bias_voltage_DUT_and_reference_trigger(bureaucrat:RunBure
 				'Bias current (A) mean': 'Bias current (A)',
 			},
 		)
+		fig.update_layout(xaxis = dict(autorange = "reversed"))
 		fig.write_html(
 			str(Norbertos_employee.path_to_directory_of_my_task/'time_resolution_vs_bias_voltage.html'),
 			include_plotlyjs = 'cdn',
@@ -208,15 +218,15 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 	Arnoldo = RunBureaucrat(Path(args.directory))
 	
-	time_resolution_vs_bias_voltage_twin_devices(
-		bureaucrat = Arnoldo,
-		signals_names = {'TI_1','TI_2'},
-	)
-	
-	# ~ time_resolution_vs_bias_voltage_DUT_and_reference_trigger(
+	# ~ time_resolution_vs_bias_voltage_twin_devices(
 		# ~ bureaucrat = Arnoldo,
-		# ~ signals_names = {'TI_2','MS_2'},
-		# ~ reference_signal_name = 'TI_2',
-		# ~ reference_signal_time_resolution = 33.75e-12,
-		# ~ reference_signal_time_resolution_error = .98e-12,
+		# ~ signals_names = {'TI_1','TI_2'},
 	# ~ )
+	
+	time_resolution_vs_bias_voltage_DUT_and_reference_trigger(
+		bureaucrat = Arnoldo,
+		signals_names = {'TI_B','TI_A'},
+		reference_signal_name = 'TI_B',
+		reference_signal_time_resolution = 33.75e-12,
+		reference_signal_time_resolution_error = .98e-12,
+	)
