@@ -183,7 +183,7 @@ def collected_charge_vs_bias_voltage(bureaucrat:RunBureaucrat, force_calculation
 			charge.append(submeasurement_charge)
 		charge = pandas.concat(charge)
 		
-		charge.to_pickle(task_handler.path_to_directory_of_my_task/'collected_charge_vs_bias_voltage.pickle')
+		charge.to_pickle(task_handler.path_to_directory_of_my_task/'collected_charge.pickle')
 		
 		summary = read_summarized_data(Romina)
 		summary.columns = [f'{col[0]} {col[1]}' for col in summary.columns]
