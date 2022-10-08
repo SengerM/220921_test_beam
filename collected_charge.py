@@ -186,7 +186,6 @@ def collected_charge_vs_bias_voltage(bureaucrat:RunBureaucrat, force_calculation
 		charge.to_pickle(task_handler.path_to_directory_of_my_task/'collected_charge_vs_bias_voltage.pickle')
 		
 		summary = read_summarized_data(Romina)
-		summary.reset_index(level=['slot_number','signal_name'], inplace=True, drop=True)
 		summary.columns = [f'{col[0]} {col[1]}' for col in summary.columns]
 		
 		fig = px.line(
