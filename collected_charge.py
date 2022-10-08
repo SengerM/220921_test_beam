@@ -240,5 +240,5 @@ if __name__ == '__main__':
 	bureaucrat = RunBureaucrat(Path(args.directory))
 	script_core(
 		bureaucrat = bureaucrat,
-		force = False,
+		force = args.force,
 	)
