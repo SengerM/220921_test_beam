@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import grafica.plotly_utils.utils # https://github.com/SengerM/grafica
 import numpy
 from huge_dataframe.SQLiteDataFrame import load_whole_dataframe # https://github.com/SengerM/huge_dataframe
+from summarize_parameters import read_summarized_data
 
 import sys 
 sys.path.append(str(Path.home()/'scripts_and_codes/repos/robocold_beta_setup/analysis_scripts'))
@@ -173,27 +174,30 @@ def collected_charge_vs_bias_voltage(bureaucrat:RunBureaucrat, force_calculation
 		)
 	
 	with Romina.handle_task('collected_charge_vs_bias_voltage') as task_handler:
-		collected_charges = []
+		charge = []
 		for Raúl in subruns:
 			Raúl.check_these_tasks_were_run_successfully('summarize_test_beam_extra_stuff')
 			submeasurement_charge = pandas.read_pickle(Raúl.path_to_directory_of_task('collected_charge_in_test_beam')/'collected_charge.pickle')
-			
-			summary = pandas.read_pickle(Raúl.path_to_directory_of_task('summarize_test_beam_extra_stuff')/'summary.pickle')
-			summary = summary.drop(columns=	'Bias current (A)')
-			summary.columns = [f'{col[0]} {col[1]}' for col in summary.columns]
-			summary = summary.reset_index(level=['slot_number','device_name'], drop=False)
-			
-			for df in [submeasurement_charge, summary]:
-				df['run_name'] = Raúl.run_name
-				df.set_index('run_name', append=True, inplace=True)
-			
-			submeasurement_charge = submeasurement_charge.join(summary)
-			collected_charges.append(submeasurement_charge)
-			
-		collected_charge_vs_bias_voltage = pandas.concat(collected_charges)
+			submeasurement_charge['run_name'] = Raúl.run_name
+			submeasurement_charge.set_index('run_name', append=True, inplace=True)
+			charge.append(submeasurement_charge)
+		charge = pandas.concat(charge)
+		
+		slots_configuration = pandas.read_csv(subruns[0].path_to_directory_of_task('test_beam')/'slots_configuration.csv')
+		slots_configuration.set_index('signal_name',inplace=True)
+		
+		charge = charge.join(slots_configuration['device_name'])
+		charge.reset_index(level='signal_name', inplace=True, drop=True)
+		charge.set_index('device_name', inplace=True, append=True)
+		
+		charge.to_pickle(task_handler.path_to_directory_of_my_task/'collected_charge_vs_bias_voltage.pickle')
+		
+		summary = read_summarized_data(Romina)
+		summary.reset_index(level=['slot_number','signal_name'], inplace=True, drop=True)
+		summary.columns = [f'{col[0]} {col[1]}' for col in summary.columns]
 		
 		fig = px.line(
-			collected_charge_vs_bias_voltage.reset_index(drop=False).sort_values(['Bias voltage (V) mean','signal_name']),
+			charge.join(summary).reset_index(drop=False).sort_values(['Bias voltage (V) mean','device_name']),
 			x = 'Bias voltage (V) mean',
 			y = 'Collected charge (V s)',
 			error_y = 'Collected charge (V s) error',
@@ -207,9 +211,6 @@ def collected_charge_vs_bias_voltage(bureaucrat:RunBureaucrat, force_calculation
 			str(task_handler.path_to_directory_of_my_task/'collected_charge_vs_bias_voltage.html'),
 			include_plotlyjs = 'cdn',
 		)
-		
-		collected_charge_vs_bias_voltage.drop(columns=['device_name','slot_number'], inplace=True)
-		collected_charge_vs_bias_voltage.to_pickle(task_handler.path_to_directory_of_my_task/'collected_charge_vs_bias_voltage.pickle')
 		
 def script_core(bureaucrat:RunBureaucrat, force:bool):
 	Manuel = bureaucrat
