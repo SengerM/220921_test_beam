@@ -183,13 +183,6 @@ def collected_charge_vs_bias_voltage(bureaucrat:RunBureaucrat, force_calculation
 			charge.append(submeasurement_charge)
 		charge = pandas.concat(charge)
 		
-		slots_configuration = pandas.read_csv(subruns[0].path_to_directory_of_task('test_beam')/'slots_configuration.csv')
-		slots_configuration.set_index('signal_name',inplace=True)
-		
-		charge = charge.join(slots_configuration['device_name'])
-		charge.reset_index(level='signal_name', inplace=True, drop=True)
-		charge.set_index('device_name', inplace=True, append=True)
-		
 		charge.to_pickle(task_handler.path_to_directory_of_my_task/'collected_charge_vs_bias_voltage.pickle')
 		
 		summary = read_summarized_data(Romina)
