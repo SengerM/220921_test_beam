@@ -58,8 +58,8 @@ def plot_everything_from_test_beam_sweeping_bias_voltage(bureaucrat:RunBureaucra
 	Ernesto.check_these_tasks_were_run_successfully('test_beam_sweeping_bias_voltage')
 	
 	with Ernesto.handle_task('plot_everything_from_test_beam_sweeping_bias_voltage') as Ernestos_employee:
-		# ~ for b in Ernesto.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
-			# ~ plot_test_beam(bureaucrat=b)
+		for b in Ernesto.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
+			plot_test_beam(bureaucrat=b)
 		path_to_subplots = []
 		for plot_type in {'Amplitude (V) ecdf','scatter_matrix_plot','Collected charge (V s) ecdf','t_50 (s) ecdf'}:
 			for subrun in Ernestos_employee.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
