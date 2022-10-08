@@ -10,6 +10,7 @@ import dominate # https://github.com/Knio/dominate
 import sys 
 sys.path.append(str(Path.home()/'scripts_and_codes/repos/robocold_beta_setup/analysis_scripts'))
 from plot_beta_scan import draw_histogram_and_langauss_fit
+import multiprocessing
 
 def apply_cuts(data_df, cuts_df):
 	"""
@@ -211,19 +212,25 @@ def clean_test_beam_plots(bureaucrat:RunBureaucrat, scatter_plot:bool=True, lang
 						signal_name = signal_name,
 						column_name = col,
 						line_color = next(colors),
+						maxfev = 66,
 					)
 				fig.write_html(
 					str(Johns_eployee.path_to_directory_of_my_task/f'langauss fit to {col}.html'),
 					include_plotlyjs = 'cdn',
 				)
 
-def plots_of_clean_test_beam_sweeping_bias_voltage(bureaucrat:RunBureaucrat, scatter_plot:bool=True, langauss_plots:bool=True, distributions:bool=False):
+def plots_of_clean_test_beam_sweeping_bias_voltage(bureaucrat:RunBureaucrat, scatter_plot:bool=True, langauss_plots:bool=True, distributions:bool=False, number_of_processes:int=1):
 	Ernesto = bureaucrat
 	Ernesto.check_these_tasks_were_run_successfully('test_beam_sweeping_bias_voltage')
 	
 	with Ernesto.handle_task('plots_of_clean_test_beam_sweeping_bias_voltage') as Ernestos_employee:
-		for b in Ernesto.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
-			clean_test_beam_plots(b, scatter_plot=scatter_plot, langauss_plots=langauss_plots, distributions=distributions)
+		
+		subruns = Ernesto.list_subruns_of_task('test_beam_sweeping_bias_voltage')
+		with multiprocessing.Pool(number_of_processes) as p:
+			p.starmap(
+				clean_test_beam_plots,
+				[(bur,sctr,lngs_plts,dtrbtns) for bur,sctr,lngs_plts,dtrbtns in zip(subruns,[scatter_plot]*len(subruns), [langauss_plots]*len(subruns), [distributions]*len(subruns))],
+			)
 		path_to_subplots = []
 		for plot_type in {'scatter matrix plot','langauss fit to Amplitude (V)','langauss fit to Collected charge (V s)'}:
 			for dummy_bureaucrat in Ernestos_employee.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
@@ -256,7 +263,7 @@ def script_core(bureaucrat:RunBureaucrat):
 	John = bureaucrat
 	if John.was_task_run_successfully('test_beam_sweeping_bias_voltage'):
 		clean_test_beam_sweeping_bias_voltage(John)
-		plots_of_clean_test_beam_sweeping_bias_voltage(John, scatter_plot=True)
+		plots_of_clean_test_beam_sweeping_bias_voltage(John, scatter_plot=True, number_of_processes=max(multiprocessing.cpu_count()-1,1))
 	elif John.was_task_run_successfully('test_beam'):
 		clean_test_beam(John)
 		clean_test_beam_plots(John, distributions=True)
