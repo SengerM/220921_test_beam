@@ -495,10 +495,18 @@ if __name__ == '__main__':
 		dest = 'force',
 		action = 'store_true'
 	)
+	parser.add_argument(
+		'--signals',
+		help = 'The name of the two signals between which you want to calculate the jitter',
+		required = True,
+		dest = 'signals',
+		nargs = '+',
+		type = str,
+	)
 	args = parser.parse_args()
 	script_core(
 		RunBureaucrat(Path(args.directory)),
-		CFD_thresholds = {'TI_A': 20, 'TI_B': 20},
-		signals_names = {'TI_A','TI_B'},
+		CFD_thresholds = {s:20 for s in args.signals},
+		signals_names = set(args.signals),
 		force = args.force,
 	)
