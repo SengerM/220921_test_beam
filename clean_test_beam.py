@@ -11,6 +11,7 @@ import sys
 sys.path.append(str(Path.home()/'scripts_and_codes/repos/robocold_beta_setup/analysis_scripts'))
 from plot_beta_scan import draw_histogram_and_langauss_fit
 import multiprocessing
+import warnings
 
 def apply_cuts(data_df, cuts_df):
 	"""
@@ -110,7 +111,8 @@ def clean_test_beam_sweeping_bias_voltage(bureaucrat:RunBureaucrat, path_to_cuts
 	for Quique in Eriberto.list_subruns_of_task('test_beam_sweeping_bias_voltage'):
 		this_run_cuts_df = cuts_df.query(f'run_name=={repr(Quique.run_name)}')
 		if len(this_run_cuts_df) == 0:
-			raise RuntimeError(f'No cuts were found when cleaning test beam for run {Eriberto.run_name} located in {Eriberto.path_to_run_directory}.')
+			warnings.warn(f'No cuts were found when cleaning test beam for run {Quique.run_name} located in {Quique.path_to_run_directory}.')
+			continue
 		this_run_cuts_df.to_csv(Quique.path_to_temporary_directory/'cuts.cvs',index=False)
 		clean_test_beam(Quique, Quique.path_to_temporary_directory/'cuts.cvs')
 
