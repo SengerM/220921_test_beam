@@ -95,21 +95,20 @@ def time_resolution_vs_bias_voltage_twin_devices(bureaucrat:RunBureaucrat, signa
 	Norberto.check_these_tasks_were_run_successfully(['jitter_calculation_test_beam_sweeping_voltage','test_beam_sweeping_bias_voltage'])
 	
 	with Norberto.handle_task('time_resolution_vs_bias_voltage_twin_devices') as Norbertos_employee:
-		jitter_df = pandas.read_pickle(Norberto.path_to_directory_of_task('jitter_calculation_test_beam_sweeping_voltage')/'jitter_vs_run_name.pickle')
-		jitter_df['Jitter (s) ufloat'] = jitter_df.apply(lambda x: ufloat(x['Jitter (s)'],x['Jitter (s) error']), axis=1)
+		jitter = pandas.read_pickle(Norberto.path_to_directory_of_task('jitter_calculation_test_beam_sweeping_voltage')/'jitter.pickle')
 		
-		summarized_data = read_summarized_data(bureaucrat)
-		summarized_data.columns = [f'{col[0]} {col[1]}' for col in summarized_data.columns]
-		summarized_data.reset_index(level='device_name',inplace=True,drop=False)
-		summarized_data.reset_index(level='slot_number',inplace=True,drop=True)
+		jitter_was_calculated_between_these_signals = set(jitter.index.get_level_values('signals_names'))
+		if len(jitter_was_calculated_between_these_signals) != 1:
+			raise RuntimeError(f'Cannot use the jitter data, check this error!')
+		jitter_was_calculated_between_these_signals = set(list(jitter_was_calculated_between_these_signals)[0])
+		if jitter_was_calculated_between_these_signals != set(signals_names):
+			raise RuntimeError(f'`signals_names` are {set(signals_names)} but signals in the calculation of the jitter are {jitter_was_calculated_between_these_signals}, they should match!')
 		
-		measured_signals_names = set(summarized_data.index.get_level_values('signal_name'))
-		if len(signals_names-measured_signals_names) != 0:
-			raise ValueError(f'`signals_names` = {signals_names} are not present in the signals names found in the measured data, which are {measured_signals_names}.')
+		jitter['Jitter (s) ufloat'] = jitter.apply(lambda x: ufloat(x['Jitter (s)'],x['Jitter (s) error']), axis=1)
 		
 		DUTs_time_resolution = []
 		for signal_name in signals_names:
-			DUT_time_resolution = jitter_df['Jitter (s) ufloat']/2**.5
+			DUT_time_resolution = jitter['Jitter (s) ufloat']/2**.5
 			DUT_time_resolution.rename(f'Time resolution (s) ufloat', inplace=True)
 			DUT_time_resolution_df = DUT_time_resolution.to_frame()
 			DUT_time_resolution_df[f'Time resolution (s)'] = DUT_time_resolution_df[f'Time resolution (s) ufloat'].apply(lambda x: x.nominal_value)
@@ -119,8 +118,14 @@ def time_resolution_vs_bias_voltage_twin_devices(bureaucrat:RunBureaucrat, signa
 			DUT_time_resolution_df.set_index('signal_name',append=True,inplace=True)
 			DUTs_time_resolution.append(DUT_time_resolution_df)
 		DUTs_time_resolution = pandas.concat(DUTs_time_resolution)
+		DUTs_time_resolution.reset_index(level='signals_names', drop=True, inplace=True)
 		
 		DUTs_time_resolution.to_pickle(Norbertos_employee.path_to_directory_of_my_task/'time_resolution.pickle')
+		
+		summarized_data = read_summarized_data(bureaucrat)
+		summarized_data.columns = [f'{col[0]} {col[1]}' for col in summarized_data.columns]
+		summarized_data.reset_index(level='device_name',inplace=True,drop=False)
+		summarized_data.reset_index(level='slot_number',inplace=True,drop=True)
 		
 		df = DUTs_time_resolution.join(summarized_data, on=['signal_name','run_name'])
 		fig = px.line(
@@ -218,15 +223,15 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 	Arnoldo = RunBureaucrat(Path(args.directory))
 	
-	# ~ time_resolution_vs_bias_voltage_twin_devices(
-		# ~ bureaucrat = Arnoldo,
-		# ~ signals_names = {'TI_1','TI_2'},
-	# ~ )
-	
-	time_resolution_vs_bias_voltage_DUT_and_reference_trigger(
+	time_resolution_vs_bias_voltage_twin_devices(
 		bureaucrat = Arnoldo,
-		signals_names = {'TI_B','TI_A'},
-		reference_signal_name = 'TI_B',
-		reference_signal_time_resolution = 33.75e-12,
-		reference_signal_time_resolution_error = .98e-12,
+		signals_names = {'TI_1','TI_2'},
 	)
+	
+	# ~ time_resolution_vs_bias_voltage_DUT_and_reference_trigger(
+		# ~ bureaucrat = Arnoldo,
+		# ~ signals_names = {'TI_B','TI_C'},
+		# ~ reference_signal_name = 'TI_B',
+		# ~ reference_signal_time_resolution = 33.75e-12,
+		# ~ reference_signal_time_resolution_error = .98e-12,
+	# ~ )
